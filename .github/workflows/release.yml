@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Enable corepack (pnpm pinned via packageManager)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm dev-build && pnpm build
+
+      - name: Visual regression gate
+        run: pnpm test:visual
+
+      - name: Pack tarball
+        run: npm pack
+
+      - name: Create GitHub release with tarball
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" ./butterchurn-*.tgz \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Built from $GITHUB_SHA by the release workflow. Install via the tarball URL to get lockfile integrity pinning."
