@@ -309,6 +309,7 @@ export default class Renderer {
 
       this.resampleShader.renderQuadTexture(this.targetTexture);
 
+      this.gl.deleteTexture(this.targetTexture);
       this.targetTexture = targetTextureNew;
 
       this.bindFrameBufferTexture(this.prevFrameBuffer, this.prevTexture);

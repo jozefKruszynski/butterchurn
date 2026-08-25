@@ -8,6 +8,8 @@ export default class ImageTextures {
       this.gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
 
     this.samplers = {};
+    // names ever attempted; blocks duplicate in-flight loads and retry storms
+    this.attempted = new Set();
 
     /* eslint-disable max-len */
     this.clouds2Image = new Image();
@@ -81,11 +83,25 @@ export default class ImageTextures {
   loadExtraImages(imageData) {
     Object.keys(imageData).forEach((imageName) => {
       const { data, width, height } = imageData[imageName];
-      if (!this.samplers[imageName]) {
+      if (!this.attempted.has(imageName)) {
+        this.attempted.add(imageName);
         const image = new Image();
+        // remote images load tainted without this and texImage2D throws
+        if (!data.startsWith("data:")) {
+          image.crossOrigin = "anonymous";
+        }
         image.onload = () => {
-          this.samplers[imageName] = this.gl.createTexture();
-          this.bindTexture(this.samplers[imageName], image, width, height);
+          const texture = this.gl.createTexture();
+          try {
+            this.bindTexture(texture, image, width, height);
+            this.samplers[imageName] = texture;
+          } catch (e) {
+            this.gl.deleteTexture(texture);
+            console.warn(`[butterchurn] texture ${imageName} rejected:`, e);
+          }
+        };
+        image.onerror = () => {
+          console.warn(`[butterchurn] texture ${imageName} failed to load`);
         };
         image.src = data;
       }

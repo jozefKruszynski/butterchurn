@@ -143,6 +143,10 @@ export default class OutputShader {
     this.gl.attachShader(this.shaderProgram, fragShader);
     this.gl.linkProgram(this.shaderProgram);
 
+    // flagged for deletion now, freed with the program
+    this.gl.deleteShader(vertShader);
+    this.gl.deleteShader(fragShader);
+
     this.positionLocation = this.gl.getAttribLocation(
       this.shaderProgram,
       "aPos"
@@ -192,6 +196,10 @@ export default class OutputShader {
     this.gl.attachShader(this.shaderProgram, vertShader);
     this.gl.attachShader(this.shaderProgram, fragShader);
     this.gl.linkProgram(this.shaderProgram);
+
+    // flagged for deletion now, freed with the program
+    this.gl.deleteShader(vertShader);
+    this.gl.deleteShader(fragShader);
 
     this.positionLocation = this.gl.getAttribLocation(
       this.shaderProgram,

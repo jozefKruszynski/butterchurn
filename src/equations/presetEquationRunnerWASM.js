@@ -286,10 +286,11 @@ export default class PresetEquationRunnerWASM {
     this.mdVSQAfterFrame = this.getQVars("perFrame");
 
     // eslint-disable-next-line max-len
-    const mdVSFrame = Utils.pickWasm(this.preset.globalPools.perFrame, [
-      ...this.frameKeys,
-      ...this.globalKeys,
-    ]);
+    this.frameAndGlobalKeys ??= [...this.frameKeys, ...this.globalKeys];
+    const mdVSFrame = Utils.pickWasm(
+      this.preset.globalPools.perFrame,
+      this.frameAndGlobalKeys
+    );
     mdVSFrame.rand_preset = this.rand_preset;
     mdVSFrame.rand_start = this.rand_start;
 

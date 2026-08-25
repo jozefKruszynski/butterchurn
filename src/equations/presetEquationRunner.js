@@ -1,6 +1,10 @@
 import Utils from "../utils";
 import { getRNG } from "../utils/rngContext";
 
+// shared placeholder for presets whose equations never touch (g)megabuf;
+// the real buffers are 1M entries (~8MB) each
+const EMPTY_MEGABUF = [];
+
 export default class PresetEquationRunner {
   constructor(preset, globalVars, opts) {
     this.rng = getRNG();
@@ -46,7 +50,23 @@ export default class PresetEquationRunner {
 
     this.mdVSQAfterFrame = null;
 
-    this.gmegabuf = new Array(1048576).fill(0);
+    const eqSources = [
+      this.preset.init_eqs_str,
+      this.preset.frame_eqs_str,
+      this.preset.pixel_eqs_str,
+    ];
+    (this.preset.waves || []).forEach((w) =>
+      eqSources.push(w.init_eqs_str, w.frame_eqs_str, w.point_eqs_str)
+    );
+    (this.preset.shapes || []).forEach((s) =>
+      eqSources.push(s.init_eqs_str, s.frame_eqs_str)
+    );
+    // "megabuf" also matches "gmegabuf"
+    this.usesMegabuf = eqSources.some((src) => src && src.includes("megabuf"));
+
+    this.gmegabuf = this.usesMegabuf
+      ? new Array(1048576).fill(0)
+      : EMPTY_MEGABUF;
 
     const mdVSBase = {
       frame: globalVars.frame,
@@ -69,7 +89,9 @@ export default class PresetEquationRunner {
 
     this.mdVS = Object.assign({}, this.preset.baseVals, mdVSBase);
 
-    this.mdVS.megabuf = new Array(1048576).fill(0);
+    this.mdVS.megabuf = this.usesMegabuf
+      ? new Array(1048576).fill(0)
+      : EMPTY_MEGABUF;
     this.mdVS.rand_start = new Float32Array([
       this.rng.random(),
       this.rng.random(),
@@ -129,7 +151,9 @@ export default class PresetEquationRunner {
           );
 
           Object.assign(mdVSWave, this.mdVSQAfterFrame, this.mdVSRegs);
-          mdVSWave.megabuf = new Array(1048576).fill(0);
+          mdVSWave.megabuf = this.usesMegabuf
+            ? new Array(1048576).fill(0)
+            : EMPTY_MEGABUF;
 
           if (wave.init_eqs) {
             mdVSWave = wave.init_eqs(mdVSWave);
@@ -176,7 +200,9 @@ export default class PresetEquationRunner {
           );
 
           Object.assign(mdVSShape, this.mdVSQAfterFrame, this.mdVSRegs);
-          mdVSShape.megabuf = new Array(1048576).fill(0);
+          mdVSShape.megabuf = this.usesMegabuf
+            ? new Array(1048576).fill(0)
+            : EMPTY_MEGABUF;
 
           if (shape.init_eqs) {
             mdVSShape = shape.init_eqs(mdVSShape);

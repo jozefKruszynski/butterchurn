@@ -8,6 +8,8 @@ const isSupported = () => {
   }
 
   const webGL2Supported = !!gl;
+  // release the probe context; browsers cap live WebGL contexts and evict the oldest
+  gl?.getExtension("WEBGL_lose_context")?.loseContext();
   const audioApiSupported = !!(
     window.AudioContext || window.webkitAudioContext
   );

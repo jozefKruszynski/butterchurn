@@ -10,6 +10,10 @@ export default class FFT {
     }
     this.initBitRevTable();
     this.initCosSinTable();
+
+    // scratch buffers reused across calls; the render loop calls this per frame
+    this.real = new Float32Array(this.NFREQ);
+    this.imag = new Float32Array(this.NFREQ);
   }
 
   initEqualizeTable() {
@@ -69,9 +73,9 @@ export default class FFT {
     }
   }
 
-  timeToFrequencyDomain(waveDataIn) {
-    const real = new Float32Array(this.NFREQ);
-    const imag = new Float32Array(this.NFREQ);
+  timeToFrequencyDomain(waveDataIn, out = new Float32Array(this.samplesOut)) {
+    const real = this.real;
+    const imag = this.imag;
 
     for (let i = 0; i < this.NFREQ; i++) {
       const idx = this.bitrevtable[i];
@@ -112,20 +116,19 @@ export default class FFT {
       t += 1;
     }
 
-    const spectralDataOut = new Float32Array(this.samplesOut);
     if (this.equalize) {
       for (let i = 0; i < this.samplesOut; i++) {
-        spectralDataOut[i] =
+        out[i] =
           this.equalizeArr[i] *
           Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
       }
     } else {
       for (let i = 0; i < this.samplesOut; i++) {
-        spectralDataOut[i] = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
+        out[i] = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
       }
     }
 
-    return spectralDataOut;
+    return out;
   }
   /* eslint-enable no-bitwise */
 }

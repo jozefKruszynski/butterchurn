@@ -7,6 +7,11 @@ export default class AudioProcessor {
 
     this.fft = new FFT(this.fftSize, 512, true);
 
+    // persistent spectrum buffers; refilled in place every frame
+    this.freqArray = new Float32Array(this.numSamps);
+    this.freqArrayL = new Float32Array(this.numSamps);
+    this.freqArrayR = new Float32Array(this.numSamps);
+
     if (context) {
       this.audioContext = context;
       this.audible = context.createDelay();
@@ -91,9 +96,9 @@ export default class AudioProcessor {
     }
 
     // Use full width samples for the FFT
-    this.freqArray = this.fft.timeToFrequencyDomain(this.timeArray);
-    this.freqArrayL = this.fft.timeToFrequencyDomain(this.timeByteArraySignedL);
-    this.freqArrayR = this.fft.timeToFrequencyDomain(this.timeByteArraySignedR);
+    this.fft.timeToFrequencyDomain(this.timeArray, this.freqArray);
+    this.fft.timeToFrequencyDomain(this.timeByteArraySignedL, this.freqArrayL);
+    this.fft.timeToFrequencyDomain(this.timeByteArraySignedR, this.freqArrayR);
   }
 
   connectAudio(audionode) {

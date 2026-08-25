@@ -6,6 +6,9 @@ import Utils from "./utils";
 import loadPresetFunctionsBuffer from "./assemblyscript/presetFunctions.ts";
 import { initializeRNG } from "./utils/rngContext";
 
+// compiled once; every preset gets its own instance with fresh imports
+let presetFunctionsModulePromise = null;
+
 export default class Visualizer {
   constructor(audioContext, canvas, opts) {
     this.opts = opts;
@@ -430,6 +433,9 @@ export default class Visualizer {
   }
 
   async loadPreset(presetMap, blendTime = 0) {
+    // a slow compile finishing late must not clobber a newer load
+    this.loadGen = (this.loadGen || 0) + 1;
+    const gen = this.loadGen;
     const preset = JSON.parse(JSON.stringify(presetMap));
     preset.baseVals = Visualizer.overrideDefaultVars(
       this.baseValsDefaults,
@@ -456,23 +462,30 @@ export default class Visualizer {
       !forceJS
     ) {
       preset.useWASM = true;
-      await this.loadWASMPreset(preset, blendTime);
+      try {
+        await this.loadWASMPreset(preset, blendTime, gen);
+      } catch (e) {
+        console.error("[butterchurn] preset load failed:", e);
+        return false;
+      }
+      return gen === this.loadGen;
     } else if (!this.opts.onlyUseWASM) {
       if (Object.prototype.hasOwnProperty.call(preset, "init_eqs_str")) {
         this.loadJSPreset(preset, blendTime);
-      } else {
-        console.warn(
-          "Tried to load a JS preset that doesn't have converted strings"
-        );
+        return true;
       }
+      console.warn(
+        "Tried to load a JS preset that doesn't have converted strings"
+      );
     } else {
       console.warn(
         "Tried to load a preset that doesn't support WASM with onlyUseWASM on"
       );
     }
+    return false;
   }
 
-  async loadWASMPreset(preset, blendTime) {
+  async loadWASMPreset(preset, blendTime, gen) {
     const qWasmVars = this.createQVars();
     const tWasmVars = this.createTVars();
 
@@ -548,14 +561,31 @@ export default class Visualizer {
       functions: wasmFunctions,
       eelVersion: preset.version || 2,
     });
+    if (gen !== undefined && gen !== this.loadGen) {
+      return;
+    }
 
     // eel-wasm returns null if the function was empty
     const handleEmptyFunction = (f) => {
       return f ? f : () => {};
     };
 
+    // pools exist only for the preset's own shapes; the import object below
+    // demands all four
+    for (let i = preset.shapes.length; i < 4; i++) {
+      wasmVarPools[`shapePerFrame${i}`] = {
+        ...qWasmVars,
+        ...tWasmVars,
+        ...this.createCustomShapePerFramePool(this.shapeBaseValsDefaults),
+      };
+    }
+
+    // the module bytes never change; compile once, instantiate per preset
+    presetFunctionsModulePromise ??= WebAssembly.compile(
+      Visualizer.base64ToArrayBuffer(loadPresetFunctionsBuffer())
+    );
     const presetFunctionsMod = await ascLoader.instantiate(
-      Visualizer.base64ToArrayBuffer(loadPresetFunctionsBuffer()),
+      presetFunctionsModulePromise,
       {
         pixelEqs: {
           perPixelEqs: handleEmptyFunction(mod.exports.perPixel),
@@ -619,6 +649,10 @@ export default class Visualizer {
       }
     );
 
+    if (gen !== undefined && gen !== this.loadGen) {
+      return;
+    }
+
     preset.globalPools = wasmVarPools;
     preset.init_eqs = handleEmptyFunction(mod.exports.presetInit);
     preset.frame_eqs = handleEmptyFunction(mod.exports.perFrame);
@@ -630,15 +664,21 @@ export default class Visualizer {
       preset.pixel_eqs = mod.exports.perPixel;
     }
     preset.pixel_eqs_initialize_array = (meshWidth, meshHeight) => {
-      const arrPtr = presetFunctionsMod.exports.createFloat32Array(
-        (meshWidth + 1) * (meshHeight + 1) * 2
-      );
-      preset.pixel_eqs_array = arrPtr;
+      // the stub runtime never frees; skip the realloc when the size holds
+      const len = (meshWidth + 1) * (meshHeight + 1) * 2;
+      if (preset.pixel_eqs_array_len === len) {
+        return;
+      }
+      preset.pixel_eqs_array_len = len;
+      preset.pixel_eqs_array = presetFunctionsMod.exports.createFloat32Array(len);
+      preset.pixel_eqs_view = null;
     };
     preset.pixel_eqs_get_array = () => {
-      return presetFunctionsMod.exports.__getFloat32ArrayView(
+      // cached view; only the realloc above can grow memory and detach it
+      preset.pixel_eqs_view ??= presetFunctionsMod.exports.__getFloat32ArrayView(
         preset.pixel_eqs_array
       );
+      return preset.pixel_eqs_view;
     };
     preset.pixel_eqs_wasm = (...args) =>
       presetFunctionsMod.exports.runPixelEquations(
@@ -682,6 +722,9 @@ export default class Visualizer {
       }
     }
 
+    if (gen !== undefined && gen !== this.loadGen) {
+      return;
+    }
     this.renderer.loadPreset(preset, blendTime);
   }
 
