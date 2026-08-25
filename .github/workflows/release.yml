@@ -33,6 +33,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # a warm pnpm store skips puppeteer's postinstall, so the browser
+      # download must be explicit
+      - name: Install Chrome for puppeteer
+        run: pnpm exec puppeteer browsers install chrome
+
       - name: Lint
         run: pnpm lint
 
