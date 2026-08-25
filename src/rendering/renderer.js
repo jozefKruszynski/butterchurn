@@ -736,21 +736,21 @@ export default class Renderer {
     if (blurMax1 - blurMin1 < fMinDist) {
       const avg = (blurMin1 + blurMax1) * 0.5;
       blurMin1 = avg - fMinDist * 0.5;
-      blurMax1 = avg - fMinDist * 0.5;
+      blurMax1 = avg + fMinDist * 0.5;
     }
     blurMax2 = Math.min(blurMax1, blurMax2);
     blurMin2 = Math.max(blurMin1, blurMin2);
     if (blurMax2 - blurMin2 < fMinDist) {
       const avg = (blurMin2 + blurMax2) * 0.5;
       blurMin2 = avg - fMinDist * 0.5;
-      blurMax2 = avg - fMinDist * 0.5;
+      blurMax2 = avg + fMinDist * 0.5;
     }
     blurMax3 = Math.min(blurMax2, blurMax3);
     blurMin3 = Math.max(blurMin2, blurMin3);
     if (blurMax3 - blurMin3 < fMinDist) {
       const avg = (blurMin3 + blurMax3) * 0.5;
       blurMin3 = avg - fMinDist * 0.5;
-      blurMax3 = avg - fMinDist * 0.5;
+      blurMax3 = avg + fMinDist * 0.5;
     }
 
     return {
