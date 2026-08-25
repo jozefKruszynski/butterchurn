@@ -302,7 +302,8 @@ export default class Noise {
                   ];
               }
 
-              const t = (y % zoom) / zoom;
+              // this pass interpolates between z slices
+              const t = (z % zoom) / zoom;
               const result = Noise.dwCubicInterpolate(y0, y1, y2, y3, t);
 
               for (let i = 0; i < 4; i++) {
