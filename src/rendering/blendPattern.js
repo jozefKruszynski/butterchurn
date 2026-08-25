@@ -23,8 +23,8 @@ export default class BlendPattern {
     let nVert = 0;
     for (let j = 0; j < newHeight + 1; j++) {
       for (let i = 0; i < newWidth + 1; i++) {
-        let x = i / newHeight;
-        let y = j / newWidth;
+        let x = i / newWidth;
+        let y = j / newHeight;
 
         x *= oldWidth + 1;
         y *= oldHeight + 1;
