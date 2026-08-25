@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# duplicate deliveries of the same tag push must not race to create the release
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release:
     runs-on: ubuntu-latest
