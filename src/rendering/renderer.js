@@ -382,12 +382,12 @@ export default class Renderer {
 
   calcTimeAndFPS(elapsedTime) {
     let elapsed;
-    if (elapsedTime) {
+    if (elapsedTime !== undefined) {
       elapsed = elapsedTime;
     } else {
       const newTime = performance.now();
       elapsed = (newTime - this.lastTime) / 1000.0;
-      if (elapsed > 1.0 || elapsed < 0.0 || this.frame < 2) {
+      if (elapsed > 1.0 || elapsed < 0.0 || this.frameNum < 2) {
         elapsed = 1.0 / 30.0;
       }
       this.lastTime = newTime;
@@ -410,7 +410,7 @@ export default class Renderer {
     }
 
     const newFPS = this.timeHist.length / (newHistTime - this.timeHist[0]);
-    if (Math.abs(newFPS - this.fps) > 3.0 && this.frame > this.timeHistMax) {
+    if (Math.abs(newFPS - this.fps) > 3.0 && this.frameNum > this.timeHistMax) {
       this.fps = newFPS;
     } else {
       const damping = 0.93;
