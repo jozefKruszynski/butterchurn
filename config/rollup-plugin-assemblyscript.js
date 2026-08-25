@@ -1,27 +1,29 @@
-import asc from "assemblyscript/cli/asc";
+import asc from "assemblyscript/asc";
 import { createFilter } from '@rollup/pluginutils';
 
 function assemblyscriptPlugin(options = {}) {
   const filter = createFilter(options.include || /\.ts$/, options.exclude);
-  
+
   return {
     name: 'assemblyscript',
-    
+
     async transform(code, id) {
       if (!filter(id)) {
         return null;
       }
-      
-      await asc.ready;
-      const { binary, stderr } = asc.compileString(code, {
+
+      // "stub" runtime: no GC, so pointers handed to JS stay valid, matching
+      // the old runtime "none" semantics; exportRuntime keeps the loader's
+      // array-view helpers working
+      const { error, binary, stderr } = await asc.compileString(code, {
         optimize: true,
         optimizeLevel: 3,
-        runtime: "none",
+        runtime: "stub",
+        exportRuntime: true,
         pedantic: true,
-        // noUnsafe: true,
       });
-      
-      if (stderr.toString()) {
+
+      if (error) {
         this.error(stderr.toString());
         return;
       }
@@ -30,7 +32,7 @@ function assemblyscriptPlugin(options = {}) {
 var data = "${Buffer.from(binary).toString("base64")}";
 export default () => data;
 `;
-      
+
       return {
         code: output,
         map: null

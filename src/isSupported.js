@@ -3,7 +3,7 @@ const isSupported = () => {
   let gl;
   try {
     gl = canvas.getContext("webgl2");
-  } catch (x) {
+  } catch {
     gl = null;
   }
 
