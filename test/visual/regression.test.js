@@ -55,7 +55,7 @@ describe('Butterchurn Visual Regression Tests', () => {
       name: preset,
       seedIndependent: false
     }))
-  ].sort(() => 0.5 - Math.random());
+  ];
 
   let testAudioData;
   beforeAll(() => {
