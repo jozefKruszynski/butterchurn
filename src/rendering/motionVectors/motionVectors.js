@@ -142,13 +142,15 @@ export default class MotionVectors {
 
               let fdist = Math.sqrt(dxi * dxi + dyi * dyi);
 
-              if (fdist < minLen && fdist > 0.00000001) {
-                fdist = minLen / fdist;
-                dxi *= fdist;
-                dyi *= fdist;
-              } else {
-                dxi = minLen;
-                dxi = minLen;
+              if (fdist < minLen) {
+                if (fdist > 0.00000001) {
+                  fdist = minLen / fdist;
+                  dxi *= fdist;
+                  dyi *= fdist;
+                } else {
+                  dxi = minLen;
+                  dyi = minLen;
+                }
               }
 
               fx2 = fx + dxi;
