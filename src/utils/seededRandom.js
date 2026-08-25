@@ -89,7 +89,8 @@ export function createRNGContext(seed = 1) {
 export function createDefaultRNGContext() {
   return {
     random: Math.random,
-    rand: (x) => x < 1 ? Math.random() : Math.random() * Math.floor(x),
+    rand: (x) =>
+      x < 1 ? Math.random() : Math.floor(Math.random() * Math.floor(x)),
     randint: (x) => Math.floor((x < 1 ? Math.random() : Math.random() * Math.floor(x)) + 1),
     getRNG: () => null,
     reset: () => {}
