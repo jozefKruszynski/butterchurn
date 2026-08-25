@@ -712,7 +712,7 @@ export default class Renderer {
     mixedFrame.darken =
       mix < snapPoint ? mdVSFramePrev.darken : mdVSFrame.darken;
     mixedFrame.solarize =
-      mix < snapPoint ? mdVSFramePrev.brighten : mdVSFrame.solarize;
+      mix < snapPoint ? mdVSFramePrev.solarize : mdVSFrame.solarize;
     mixedFrame.b1n = mix * mdVSFrame.b1n + mix2 * mdVSFramePrev.b1n;
     mixedFrame.b2n = mix * mdVSFrame.b2n + mix2 * mdVSFramePrev.b2n;
     mixedFrame.b3n = mix * mdVSFrame.b3n + mix2 * mdVSFramePrev.b3n;
