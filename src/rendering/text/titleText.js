@@ -75,6 +75,8 @@ export default class TitleText {
       this.gl.UNSIGNED_BYTE,
       imageData
     );
+    // reset so later texture uploads on this context are not flipped
+    this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, false);
     this.gl.texParameteri(
       this.gl.TEXTURE_2D,
       this.gl.TEXTURE_MAG_FILTER,
@@ -241,7 +243,8 @@ export default class TitleText {
     const t2 = rampedProgress ** 1.8 * 1.3;
     for (let j = 0; j < gridY1; j++) {
       for (let i = 0; i < gridX1; i++) {
-        const idx = j * gridX1 + i;
+        // uvs interleaves pairs, so the vertex's slot is doubled
+        const idx = (j * gridX1 + i) * 2;
         uvs[idx] +=
           t2 *
           0.07 *
