@@ -169,7 +169,7 @@ export default class CustomShape {
       "uBorderColor"
     );
     this.thickOffsetLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
+      this.borderShaderProgram,
       "thickOffset"
     );
   }
