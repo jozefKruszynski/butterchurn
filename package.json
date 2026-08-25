@@ -58,8 +58,7 @@
     "jest-image-snapshot": "6.5.2",
     "prettier": "3.9.6",
     "puppeteer": "25.6.0",
-    "rollup": "4.62.4",
-    "rollup-plugin-copy": "3.5.0"
+    "rollup": "4.62.4"
   },
   "browserslist": "supports audio-api and supports webgl2 and last 3 years",
   "packageManager": "pnpm@10.6.5+sha1.da220e966c2db3275efb5928cf8f3592681b106b",
