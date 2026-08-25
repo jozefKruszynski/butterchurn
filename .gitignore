@@ -2,3 +2,8 @@ node_modules/
 /dist/
 .netlify
 .pnpm-store/
+
+# local build/test artifacts
+*.tgz
+test/visual/__image_snapshots__/__diff_output__/
+test/visual/__image_snapshots__/__received_output__/
