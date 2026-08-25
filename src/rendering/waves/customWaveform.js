@@ -205,7 +205,8 @@ export default class CustomWaveform {
             const value1 = this.pointsData[0][j];
             const value2 = this.pointsData[1][j];
 
-            mdVSWaveFrame.sample = j / (this.samples - 1);
+            mdVSWaveFrame.sample =
+              this.samples > 1 ? j / (this.samples - 1) : 0;
             mdVSWaveFrame.value1 = value1;
             mdVSWaveFrame.value2 = value2;
             mdVSWaveFrame.x = 0.5 + value1;
@@ -247,7 +248,8 @@ export default class CustomWaveform {
             const value1 = this.pointsData[0][j];
             const value2 = this.pointsData[1][j];
 
-            varPool.sample.value = j / (this.samples - 1);
+            varPool.sample.value =
+              this.samples > 1 ? j / (this.samples - 1) : 0;
             varPool.value1.value = value1;
             varPool.value2.value = value2;
             varPool.x.value = 0.5 + value1;
