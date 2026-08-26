@@ -767,6 +767,10 @@ export default class Visualizer {
     this.renderer.setTint(rgb);
   }
 
+  setMaxShapeInstances(maxInstances) {
+    this.renderer.setMaxShapeInstances(maxInstances);
+  }
+
   launchSongTitleAnim(text) {
     this.renderer.launchSongTitleAnim(text);
   }

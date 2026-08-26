@@ -220,7 +220,11 @@ export default class CustomShape {
         const baseVals =
           presetEquationRunner.preset.shapes[this.index].baseVals;
 
-        const numInst = Math.clamp(baseVals.num_inst, 1, 1024);
+        const numInst = Math.clamp(
+          baseVals.num_inst,
+          1,
+          this.maxInstances ?? 1024
+        );
         for (let j = 0; j < numInst; j++) {
           mdVSShape.instance = j;
           mdVSShape.x = baseVals.x;
@@ -326,7 +330,11 @@ export default class CustomShape {
         varPool.additive.value = baseVals.additive;
         presetEquationRunner.preset.shapes[this.index].frame_eqs_save();
 
-        const numInst = Math.clamp(baseVals.num_inst, 1, 1024);
+        const numInst = Math.clamp(
+          baseVals.num_inst,
+          1,
+          this.maxInstances ?? 1024
+        );
         for (let j = 0; j < numInst; j++) {
           varPool.instance.value = j;
 

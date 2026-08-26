@@ -1063,6 +1063,12 @@ export default class Renderer {
     this.gpuTimer.frameEnd();
   }
 
+  setMaxShapeInstances(maxInstances) {
+    const clamped = Math.min(1024, Math.max(1, Math.floor(maxInstances)));
+    for (const shape of this.customShapes) shape.maxInstances = clamped;
+    for (const shape of this.prevCustomShapes) shape.maxInstances = clamped;
+  }
+
   setTint(rgb) {
     // an interrupted transition continues from wherever it stands
     this.tintFromColor = [...this.tintColor];
