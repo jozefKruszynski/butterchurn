@@ -26,16 +26,31 @@ const SHAPE_INSTANCE_KEYS = [
   "y",
 ];
 
+const MAX_SIDES = 101;
+const VERTS_PER_INSTANCE = MAX_SIDES + 2;
+const INITIAL_BATCH_VERTS = 8 * VERTS_PER_INSTANCE;
+
 export default class CustomShape {
   constructor(index, gl, opts) {
     this.index = index;
     this.gl = gl;
 
-    const maxSides = 101;
-    this.positions = new Float32Array((maxSides + 2) * 3);
-    this.colors = new Float32Array((maxSides + 2) * 4);
-    this.uvs = new Float32Array((maxSides + 2) * 2);
-    this.borderPositions = new Float32Array((maxSides + 1) * 3);
+    this.borderPositions = new Float32Array((MAX_SIDES + 1) * 3);
+
+    // instances sharing blend/texture state accumulate here and render as a
+    // single indexed draw; instance-heavy presets otherwise flood the driver
+    // with one buffer upload and draw call per instance
+    this.batchCapacity = INITIAL_BATCH_VERTS;
+    this.batchPositions = new Float32Array(this.batchCapacity * 3);
+    this.batchColors = new Float32Array(this.batchCapacity * 4);
+    this.batchUvs = new Float32Array(this.batchCapacity * 2);
+    this.batchIndices = new Uint32Array(this.batchCapacity * 3);
+    this.batchVertexCount = 0;
+    this.batchIndexCount = 0;
+    this.batchTextured = false;
+    this.batchAdditive = false;
+    this.batchTexture = null;
+    this.gpuCapacity = 0;
 
     this.texsizeX = opts.texsizeX;
     this.texsizeY = opts.texsizeY;
@@ -47,19 +62,9 @@ export default class CustomShape {
     this.positionVertexBuf = this.gl.createBuffer();
     this.colorVertexBuf = this.gl.createBuffer();
     this.uvVertexBuf = this.gl.createBuffer();
+    this.indexBuf = this.gl.createBuffer();
     this.borderPositionVertexBuf = this.gl.createBuffer();
 
-    // allocate max-size GPU storage once; draws refill it with bufferSubData
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.positions,
-      this.gl.DYNAMIC_DRAW
-    );
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVertexBuf);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.colors, this.gl.DYNAMIC_DRAW);
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.uvVertexBuf);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.uvs, this.gl.DYNAMIC_DRAW);
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.borderPositionVertexBuf);
     this.gl.bufferData(
       this.gl.ARRAY_BUFFER,
@@ -279,12 +284,12 @@ export default class CustomShape {
           mdVSUserKeysShape
         );
 
-         
+
         presetEquationRunner.mdVSFrameMapShapes[
           this.index
         ] = mdVSNewFrameMapShape;
       } else {
-         
+
         this.setupShapeBuffers(
           presetEquationRunner.preset.globalPools.perFrame.wrap.value
         );
@@ -353,58 +358,12 @@ export default class CustomShape {
           this.buildAndDrawInstance(vals, blendProgress, prevTexture);
         }
       }
+
+      this.flushBatch();
     }
   }
 
   setupShapeBuffers(wrap) {
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
-
-    this.gl.vertexAttribPointer(
-      this.aPosLocation,
-      3,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(this.aPosLocation);
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVertexBuf);
-
-    this.gl.vertexAttribPointer(
-      this.aColorLocation,
-      4,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(this.aColorLocation);
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.uvVertexBuf);
-
-    this.gl.vertexAttribPointer(
-      this.aUvLocation,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(this.aUvLocation);
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.borderPositionVertexBuf);
-
-    this.gl.vertexAttribPointer(
-      this.aBorderPosLoc,
-      3,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(this.aBorderPosLoc);
-
     const wrapping = wrap !== 0 ? this.gl.REPEAT : this.gl.CLAMP_TO_EDGE;
     this.gl.samplerParameteri(
       this.mainSampler,
@@ -418,8 +377,28 @@ export default class CustomShape {
     );
   }
 
-  // one geometry+draw body for both equation paths; vals carries the raw
-  // per-instance values each path produced
+  ensureBatchCapacity(vertsNeeded) {
+    if (this.batchVertexCount + vertsNeeded <= this.batchCapacity) return;
+    let capacity = this.batchCapacity;
+    while (this.batchVertexCount + vertsNeeded > capacity) capacity *= 2;
+    const positions = new Float32Array(capacity * 3);
+    positions.set(this.batchPositions);
+    const colors = new Float32Array(capacity * 4);
+    colors.set(this.batchColors);
+    const uvs = new Float32Array(capacity * 2);
+    uvs.set(this.batchUvs);
+    const indices = new Uint32Array(capacity * 3);
+    indices.set(this.batchIndices);
+    this.batchPositions = positions;
+    this.batchColors = colors;
+    this.batchUvs = uvs;
+    this.batchIndices = indices;
+    this.batchCapacity = capacity;
+  }
+
+  // geometry for both equation paths; vals carries the raw per-instance
+  // values each path produced. The fill is appended to the batch (deferred
+  // draw); a border forces the batch out immediately to keep paint order.
   buildAndDrawInstance(vals, blendProgress, prevTexture) {
     let sides = vals.sides;
     sides = Math.clamp(sides, 3, 100);
@@ -464,178 +443,207 @@ export default class CustomShape {
     const isBorderThick = Math.abs(thickoutline) >= 1;
     const isAdditive = Math.abs(additive) >= 1;
 
-    this.positions[0] = x;
-    this.positions[1] = y;
-    this.positions[2] = 0;
+    // blend mode and texturing are draw state, so a change ends the batch
+    if (
+      this.batchVertexCount > 0 &&
+      (isTextured !== this.batchTextured || isAdditive !== this.batchAdditive)
+    ) {
+      this.flushBatch();
+    }
+    if (this.batchVertexCount === 0) {
+      this.batchTextured = isTextured;
+      this.batchAdditive = isAdditive;
+      this.batchTexture = prevTexture;
+    }
 
-    this.colors[0] = r;
-    this.colors[1] = g;
-    this.colors[2] = b;
-    this.colors[3] = a * blendProgress;
+    this.ensureBatchCapacity(sides + 2);
+    const base = this.batchVertexCount;
+    const positions = this.batchPositions;
+    const colors = this.batchColors;
+    const uvs = this.batchUvs;
+
+    positions[base * 3 + 0] = x;
+    positions[base * 3 + 1] = y;
+    positions[base * 3 + 2] = 0;
+
+    colors[base * 4 + 0] = r;
+    colors[base * 4 + 1] = g;
+    colors[base * 4 + 2] = b;
+    colors[base * 4 + 3] = a * blendProgress;
 
     if (isTextured) {
-      this.uvs[0] = 0.5;
-      this.uvs[1] = 0.5;
+      uvs[base * 2 + 0] = 0.5;
+      uvs[base * 2 + 1] = 0.5;
     }
 
     const quarterPi = Math.PI * 0.25;
     for (let k = 1; k <= sides + 1; k++) {
       const p = (k - 1) / sides;
       const pTwoPi = p * 2 * Math.PI;
+      const v = base + k;
 
       const angSum = pTwoPi + ang + quarterPi;
-      this.positions[k * 3 + 0] =
-        x + rad * Math.cos(angSum) * this.aspecty;
-      this.positions[k * 3 + 1] = y + rad * Math.sin(angSum);
-      this.positions[k * 3 + 2] = 0;
+      positions[v * 3 + 0] = x + rad * Math.cos(angSum) * this.aspecty;
+      positions[v * 3 + 1] = y + rad * Math.sin(angSum);
+      positions[v * 3 + 2] = 0;
 
-      this.colors[k * 4 + 0] = r2;
-      this.colors[k * 4 + 1] = g2;
-      this.colors[k * 4 + 2] = b2;
-      this.colors[k * 4 + 3] = a2 * blendProgress;
+      colors[v * 4 + 0] = r2;
+      colors[v * 4 + 1] = g2;
+      colors[v * 4 + 2] = b2;
+      colors[v * 4 + 3] = a2 * blendProgress;
 
       if (isTextured) {
         const texAngSum = pTwoPi + texAng + quarterPi;
-        this.uvs[k * 2 + 0] =
+        uvs[v * 2 + 0] =
           0.5 + ((0.5 * Math.cos(texAngSum)) / texZoom) * this.aspecty;
-        this.uvs[k * 2 + 1] = 0.5 + (0.5 * Math.sin(texAngSum)) / texZoom;
+        uvs[v * 2 + 1] = 0.5 + (0.5 * Math.sin(texAngSum)) / texZoom;
       }
 
       if (hasBorder) {
-        this.borderPositions[(k - 1) * 3 + 0] = this.positions[k * 3 + 0];
-        this.borderPositions[(k - 1) * 3 + 1] = this.positions[k * 3 + 1];
-        this.borderPositions[(k - 1) * 3 + 2] = this.positions[k * 3 + 2];
+        this.borderPositions[(k - 1) * 3 + 0] = positions[v * 3 + 0];
+        this.borderPositions[(k - 1) * 3 + 1] = positions[v * 3 + 1];
+        this.borderPositions[(k - 1) * 3 + 2] = positions[v * 3 + 2];
       }
     }
 
-    this.drawCustomShapeInstance(
-      prevTexture,
-      sides,
-      isTextured,
-      hasBorder,
-      isBorderThick,
-      isAdditive
-    );
+    // fan triangle k is (center, ring k, ring k+1); indexed triangles keep
+    // that exact primitive order, so blending matches the per-instance draws
+    let idx = this.batchIndexCount;
+    const indices = this.batchIndices;
+    for (let k = 1; k <= sides; k++) {
+      indices[idx++] = base;
+      indices[idx++] = base + k;
+      indices[idx++] = base + k + 1;
+    }
+    this.batchIndexCount = idx;
+    this.batchVertexCount += sides + 2;
+
+    if (hasBorder) {
+      this.flushBatch();
+      this.drawBorderInstance(sides, isBorderThick);
+    }
   }
 
-  drawCustomShapeInstance(
-    prevTexture,
-    sides,
-    isTextured,
-    hasBorder,
-    isBorderThick,
-    isAdditive
-  ) {
-    this.gl.useProgram(this.shaderProgram);
+  flushBatch() {
+    if (this.batchVertexCount === 0) return;
+    const gl = this.gl;
 
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
+    gl.useProgram(this.shaderProgram);
+
+    const grown = this.gpuCapacity < this.batchCapacity;
+    if (grown) this.gpuCapacity = this.batchCapacity;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionVertexBuf);
+    if (grown) {
+      gl.bufferData(gl.ARRAY_BUFFER, this.batchPositions, gl.DYNAMIC_DRAW);
+    } else {
+      gl.bufferSubData(
+        gl.ARRAY_BUFFER,
+        0,
+        this.batchPositions,
+        0,
+        this.batchVertexCount * 3
+      );
+    }
+    gl.vertexAttribPointer(this.aPosLocation, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.aPosLocation);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorVertexBuf);
+    if (grown) {
+      gl.bufferData(gl.ARRAY_BUFFER, this.batchColors, gl.DYNAMIC_DRAW);
+    } else {
+      gl.bufferSubData(
+        gl.ARRAY_BUFFER,
+        0,
+        this.batchColors,
+        0,
+        this.batchVertexCount * 4
+      );
+    }
+    gl.vertexAttribPointer(this.aColorLocation, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.aColorLocation);
+
+    // the uv buffer is bound (and kept at capacity) even untextured so the
+    // enabled attribute never points past its storage
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.uvVertexBuf);
+    if (grown) {
+      gl.bufferData(gl.ARRAY_BUFFER, this.batchUvs, gl.DYNAMIC_DRAW);
+    } else if (this.batchTextured) {
+      gl.bufferSubData(
+        gl.ARRAY_BUFFER,
+        0,
+        this.batchUvs,
+        0,
+        this.batchVertexCount * 2
+      );
+    }
+    gl.vertexAttribPointer(this.aUvLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.aUvLocation);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuf);
+    if (grown) {
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.batchIndices, gl.DYNAMIC_DRAW);
+    } else {
+      gl.bufferSubData(
+        gl.ELEMENT_ARRAY_BUFFER,
+        0,
+        this.batchIndices,
+        0,
+        this.batchIndexCount
+      );
+    }
+
+    gl.uniform1f(this.texturedLoc, this.batchTextured ? 1 : 0);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.batchTexture);
+    gl.bindSampler(0, this.mainSampler);
+    gl.uniform1i(this.textureLoc, 0);
+
+    if (this.batchAdditive) {
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    } else {
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    }
+
+    gl.drawElements(gl.TRIANGLES, this.batchIndexCount, gl.UNSIGNED_INT, 0);
+
+    this.batchVertexCount = 0;
+    this.batchIndexCount = 0;
+  }
+
+  drawBorderInstance(sides, isBorderThick) {
+    this.gl.useProgram(this.borderShaderProgram);
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.borderPositionVertexBuf);
     this.gl.bufferSubData(
       this.gl.ARRAY_BUFFER,
       0,
-      this.positions,
+      this.borderPositions,
       0,
-      (sides + 2) * 3
+      (sides + 1) * 3
     );
 
     this.gl.vertexAttribPointer(
-      this.aPosLocation,
+      this.aBorderPosLoc,
       3,
       this.gl.FLOAT,
       false,
       0,
       0
     );
-    this.gl.enableVertexAttribArray(this.aPosLocation);
+    this.gl.enableVertexAttribArray(this.aBorderPosLoc);
 
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVertexBuf);
-    this.gl.bufferSubData(
-      this.gl.ARRAY_BUFFER,
-      0,
-      this.colors,
-      0,
-      (sides + 2) * 4
-    );
+    this.gl.uniform4fv(this.uBorderColorLoc, this.borderColor);
 
-    this.gl.vertexAttribPointer(
-      this.aColorLocation,
-      4,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(this.aColorLocation);
-
-    if (isTextured) {
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.uvVertexBuf);
-      this.gl.bufferSubData(
-        this.gl.ARRAY_BUFFER,
-        0,
-        this.uvs,
-        0,
-        (sides + 2) * 2
+    const instances = isBorderThick ? 4 : 1;
+    for (let i = 0; i < instances; i++) {
+      this.gl.uniform2fv(
+        this.thickOffsetLoc,
+        fillThickOffset(this.scratch2, i, this.texsizeX, this.texsizeY)
       );
 
-      this.gl.vertexAttribPointer(
-        this.aUvLocation,
-        2,
-        this.gl.FLOAT,
-        false,
-        0,
-        0
-      );
-      this.gl.enableVertexAttribArray(this.aUvLocation);
-    }
-
-    this.gl.uniform1f(this.texturedLoc, isTextured ? 1 : 0);
-
-    this.gl.activeTexture(this.gl.TEXTURE0);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, prevTexture);
-    this.gl.bindSampler(0, this.mainSampler);
-    this.gl.uniform1i(this.textureLoc, 0);
-
-    if (isAdditive) {
-      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE);
-    } else {
-      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-    }
-
-    this.gl.drawArrays(this.gl.TRIANGLE_FAN, 0, sides + 2);
-
-    if (hasBorder) {
-      this.gl.useProgram(this.borderShaderProgram);
-
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.borderPositionVertexBuf);
-      this.gl.bufferSubData(
-        this.gl.ARRAY_BUFFER,
-        0,
-        this.borderPositions,
-        0,
-        (sides + 1) * 3
-      );
-
-      this.gl.vertexAttribPointer(
-        this.aBorderPosLoc,
-        3,
-        this.gl.FLOAT,
-        false,
-        0,
-        0
-      );
-      this.gl.enableVertexAttribArray(this.aBorderPosLoc);
-
-      this.gl.uniform4fv(this.uBorderColorLoc, this.borderColor);
-
-      // TODO: use drawArraysInstanced
-      const instances = isBorderThick ? 4 : 1;
-      for (let i = 0; i < instances; i++) {
-        this.gl.uniform2fv(
-          this.thickOffsetLoc,
-          fillThickOffset(this.scratch2, i, this.texsizeX, this.texsizeY)
-        );
-
-        this.gl.drawArrays(this.gl.LINE_STRIP, 0, sides + 1);
-      }
+      this.gl.drawArrays(this.gl.LINE_STRIP, 0, sides + 1);
     }
   }
 }
