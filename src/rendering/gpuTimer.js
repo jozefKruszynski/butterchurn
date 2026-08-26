@@ -20,7 +20,7 @@ export default class GpuTimer {
   }
 
   section(name) {
-    if (!this.ext) return;
+    if (!this.ext) {return;}
     this.endSection();
     const query = this.gl.createQuery();
     this.gl.beginQuery(this.ext.TIME_ELAPSED_EXT, query);
@@ -28,14 +28,14 @@ export default class GpuTimer {
   }
 
   endSection() {
-    if (!this.active) return;
+    if (!this.active) {return;}
     this.gl.endQuery(this.ext.TIME_ELAPSED_EXT);
     this.pending.push(this.active);
     this.active = null;
   }
 
   frameEnd() {
-    if (!this.ext) return;
+    if (!this.ext) {return;}
     this.endSection();
 
     while (this.pending.length > 0) {
@@ -54,7 +54,7 @@ export default class GpuTimer {
 
     // a stalled driver must not accumulate queries without bound
     if (this.pending.length > 30) {
-      for (const entry of this.pending) this.gl.deleteQuery(entry.query);
+      for (const entry of this.pending) {this.gl.deleteQuery(entry.query);}
       this.pending = [];
     }
   }
