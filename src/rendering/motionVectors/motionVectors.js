@@ -1,4 +1,4 @@
-import ShaderUtils from "../shaders/shaderUtils";
+import ShaderUtils, { buildProgram } from "../shaders/shaderUtils";
 
 export default class MotionVectors {
   constructor(gl, opts) {
@@ -27,24 +27,15 @@ export default class MotionVectors {
   }
 
   createShader() {
-    this.shaderProgram = this.gl.createProgram();
-
-    const vertShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-    this.gl.shaderSource(
-      vertShader,
+    this.shaderProgram = buildProgram(
+      this.gl,
       `
       #version 300 es
       in vec3 aPos;
       void main(void) {
         gl_Position = vec4(aPos, 1.0);
       }
-      `.trim()
-    );
-    this.gl.compileShader(vertShader);
-
-    const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-    this.gl.shaderSource(
-      fragShader,
+      `.trim(),
       `
       #version 300 es
       precision ${this.floatPrecision} float;
@@ -57,11 +48,6 @@ export default class MotionVectors {
       }
       `.trim()
     );
-    this.gl.compileShader(fragShader);
-
-    this.gl.attachShader(this.shaderProgram, vertShader);
-    this.gl.attachShader(this.shaderProgram, fragShader);
-    this.gl.linkProgram(this.shaderProgram);
 
     this.aPosLoc = this.gl.getAttribLocation(this.shaderProgram, "aPos");
 

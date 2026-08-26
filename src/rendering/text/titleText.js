@@ -1,4 +1,4 @@
-import ShaderUtils from "../shaders/shaderUtils";
+import ShaderUtils, { buildProgram } from "../shaders/shaderUtils";
 
 export default class TitleText {
   constructor(gl, opts = {}) {
@@ -172,11 +172,8 @@ export default class TitleText {
   }
 
   createShader() {
-    this.shaderProgram = this.gl.createProgram();
-
-    const vertShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-    this.gl.shaderSource(
-      vertShader,
+    this.shaderProgram = buildProgram(
+      this.gl,
       `#version 300 es
        const vec2 halfmad = vec2(0.5);
        in vec2 aPos;
@@ -185,13 +182,7 @@ export default class TitleText {
        void main(void) {
          gl_Position = vec4(aPos, 0.0, 1.0);
           uv = aUv;
-       }`
-    );
-    this.gl.compileShader(vertShader);
-
-    const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-    this.gl.shaderSource(
-      fragShader,
+       }`,
       `#version 300 es
        precision ${this.floatPrecision} float;
        precision highp int;
@@ -206,11 +197,6 @@ export default class TitleText {
          fragColor = texture(uTexture, uv) * vec4(textColor);
        }`
     );
-    this.gl.compileShader(fragShader);
-
-    this.gl.attachShader(this.shaderProgram, vertShader);
-    this.gl.attachShader(this.shaderProgram, fragShader);
-    this.gl.linkProgram(this.shaderProgram);
 
     this.positionLocation = this.gl.getAttribLocation(
       this.shaderProgram,

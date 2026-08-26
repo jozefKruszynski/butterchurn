@@ -1,4 +1,4 @@
-import ShaderUtils from "./shaderUtils";
+import ShaderUtils, { buildProgram } from "./shaderUtils";
 
 export default class OutputShader {
   constructor(gl, opts) {
@@ -47,11 +47,8 @@ export default class OutputShader {
 
   // based on https://github.com/mattdesl/glsl-fxaa
   createFXAAShader() {
-    this.shaderProgram = this.gl.createProgram();
-
-    const vertShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-    this.gl.shaderSource(
-      vertShader,
+    this.shaderProgram = buildProgram(
+      this.gl,
       `#version 300 es
        const vec2 halfmad = vec2(0.5);
        in vec2 aPos;
@@ -69,13 +66,7 @@ export default class OutputShader {
          v_rgbNE = v_rgbM + (vec2(1.0, -1.0) * texsize.zx);
          v_rgbSW = v_rgbM + (vec2(-1.0, 1.0) * texsize.zx);
          v_rgbSE = v_rgbM + (vec2(1.0, 1.0) * texsize.zx);
-       }`
-    );
-    this.gl.compileShader(vertShader);
-
-    const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-    this.gl.shaderSource(
-      fragShader,
+       }`,
       `#version 300 es
        precision ${this.floatPrecision} float;
        precision highp int;
@@ -144,15 +135,6 @@ export default class OutputShader {
          fragColor = color;
        }`
     );
-    this.gl.compileShader(fragShader);
-
-    this.gl.attachShader(this.shaderProgram, vertShader);
-    this.gl.attachShader(this.shaderProgram, fragShader);
-    this.gl.linkProgram(this.shaderProgram);
-
-    // flagged for deletion now, freed with the program
-    this.gl.deleteShader(vertShader);
-    this.gl.deleteShader(fragShader);
 
     this.positionLocation = this.gl.getAttribLocation(
       this.shaderProgram,
@@ -166,11 +148,8 @@ export default class OutputShader {
   }
 
   createShader() {
-    this.shaderProgram = this.gl.createProgram();
-
-    const vertShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-    this.gl.shaderSource(
-      vertShader,
+    this.shaderProgram = buildProgram(
+      this.gl,
       `#version 300 es
        const vec2 halfmad = vec2(0.5);
        in vec2 aPos;
@@ -178,13 +157,7 @@ export default class OutputShader {
        void main(void) {
          gl_Position = vec4(aPos, 0.0, 1.0);
          uv = aPos * halfmad + halfmad;
-       }`
-    );
-    this.gl.compileShader(vertShader);
-
-    const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-    this.gl.shaderSource(
-      fragShader,
+       }`,
       `#version 300 es
        precision ${this.floatPrecision} float;
        precision highp int;
@@ -198,15 +171,6 @@ export default class OutputShader {
          fragColor = vec4(texture(uTexture, uv).rgb, 1.0);
        }`
     );
-    this.gl.compileShader(fragShader);
-
-    this.gl.attachShader(this.shaderProgram, vertShader);
-    this.gl.attachShader(this.shaderProgram, fragShader);
-    this.gl.linkProgram(this.shaderProgram);
-
-    // flagged for deletion now, freed with the program
-    this.gl.deleteShader(vertShader);
-    this.gl.deleteShader(fragShader);
 
     this.positionLocation = this.gl.getAttribLocation(
       this.shaderProgram,

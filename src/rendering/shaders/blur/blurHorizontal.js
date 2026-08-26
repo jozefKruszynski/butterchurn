@@ -1,4 +1,4 @@
-import ShaderUtils from "../shaderUtils";
+import ShaderUtils, { buildProgram } from "../shaderUtils";
 
 export default class BlurHorizontal {
   constructor(gl, blurLevel) {
@@ -35,11 +35,8 @@ export default class BlurHorizontal {
   }
 
   createShader() {
-    this.shaderProgram = this.gl.createProgram();
-
-    const vertShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-    this.gl.shaderSource(
-      vertShader,
+    this.shaderProgram = buildProgram(
+      this.gl,
       `
       #version 300 es
       const vec2 halfmad = vec2(0.5);
@@ -49,13 +46,7 @@ export default class BlurHorizontal {
         gl_Position = vec4(aPos, 0.0, 1.0);
         uv = aPos * halfmad + halfmad;
       }
-      `.trim()
-    );
-    this.gl.compileShader(vertShader);
-
-    const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-    this.gl.shaderSource(
-      fragShader,
+      `.trim(),
       `#version 300 es
        precision ${this.floatPrecision} float;
        precision highp int;
@@ -99,11 +90,6 @@ export default class BlurHorizontal {
          fragColor = vec4(blur, 1.0);
        }`
     );
-    this.gl.compileShader(fragShader);
-
-    this.gl.attachShader(this.shaderProgram, vertShader);
-    this.gl.attachShader(this.shaderProgram, fragShader);
-    this.gl.linkProgram(this.shaderProgram);
 
     this.positionLocation = this.gl.getAttribLocation(
       this.shaderProgram,

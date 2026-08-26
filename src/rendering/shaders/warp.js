@@ -1,21 +1,5 @@
-import ShaderUtils from "./shaderUtils";
+import ShaderUtils, { buildProgram, fill2, fill4 } from "./shaderUtils";
 import { getRNG } from "../../utils/rngContext";
-
-
-// scratch fillers: uniform*fv copies at call time, so one shared scratch is safe
-function fill2(arr, a, b) {
-  arr[0] = a;
-  arr[1] = b;
-  return arr;
-}
-
-function fill4(arr, a, b, c, d) {
-  arr[0] = a;
-  arr[1] = b;
-  arr[2] = c;
-  arr[3] = d;
-  return arr;
-}
 
 export default class WarpShader {
   constructor(gl, noise, image, opts = {}) {
@@ -206,11 +190,8 @@ export default class WarpShader {
 
     this.userTextures = ShaderUtils.getUserSamplers(fragShaderHeaderText);
 
-    this.shaderProgram = this.gl.createProgram();
-
-    const vertShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-    this.gl.shaderSource(
-      vertShader,
+    this.shaderProgram = buildProgram(
+      this.gl,
       `
       #version 300 es
       precision ${this.floatPrecision} float;
@@ -227,13 +208,7 @@ export default class WarpShader {
         uv = aWarpUv;
         vColor = aWarpColor;
       }
-      `.trim()
-    );
-    this.gl.compileShader(vertShader);
-
-    const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-    this.gl.shaderSource(
-      fragShader,
+      `.trim(),
       `
       #version 300 es
       precision ${this.floatPrecision} float;
@@ -363,15 +338,6 @@ export default class WarpShader {
       }
       `.trim()
     );
-    this.gl.compileShader(fragShader);
-
-    this.gl.attachShader(this.shaderProgram, vertShader);
-    this.gl.attachShader(this.shaderProgram, fragShader);
-    this.gl.linkProgram(this.shaderProgram);
-
-    // flagged for deletion now, freed with the program
-    this.gl.deleteShader(vertShader);
-    this.gl.deleteShader(fragShader);
 
     this.positionLocation = this.gl.getAttribLocation(
       this.shaderProgram,

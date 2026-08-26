@@ -1,14 +1,6 @@
 import Utils from "../../utils";
-import ShaderUtils from "../shaders/shaderUtils";
+import ShaderUtils, { buildProgram, fillThickOffset } from "../shaders/shaderUtils";
 import WaveUtils from "./waveUtils";
-
-
-// uniform2fv copies at call time, so one shared scratch avoids per-call arrays
-function fill2(arr, a, b) {
-  arr[0] = a;
-  arr[1] = b;
-  return arr;
-}
 
 export default class CustomWaveform {
   constructor(index, gl, opts) {
@@ -51,11 +43,8 @@ export default class CustomWaveform {
   }
 
   createShader() {
-    this.shaderProgram = this.gl.createProgram();
-
-    const vertShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-    this.gl.shaderSource(
-      vertShader,
+    this.shaderProgram = buildProgram(
+      this.gl,
       `
       #version 300 es
       uniform float uSize;
@@ -68,13 +57,7 @@ export default class CustomWaveform {
         gl_PointSize = uSize;
         gl_Position = vec4(aPos + vec3(thickOffset, 0.0), 1.0);
       }
-      `.trim()
-    );
-    this.gl.compileShader(vertShader);
-
-    const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-    this.gl.shaderSource(
-      fragShader,
+      `.trim(),
       `
       #version 300 es
       precision ${this.floatPrecision} float;
@@ -87,11 +70,6 @@ export default class CustomWaveform {
       }
       `.trim()
     );
-    this.gl.compileShader(fragShader);
-
-    this.gl.attachShader(this.shaderProgram, vertShader);
-    this.gl.attachShader(this.shaderProgram, fragShader);
-    this.gl.linkProgram(this.shaderProgram);
 
     this.aPosLocation = this.gl.getAttribLocation(this.shaderProgram, "aPos");
     this.aColorLocation = this.gl.getAttribLocation(
@@ -417,19 +395,10 @@ export default class CustomWaveform {
 
       // TODO: use drawArraysInstanced
       for (let i = 0; i < instances; i++) {
-        const offset = 2;
-        if (i === 0) {
-          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 0, 0));
-        } else if (i === 1) {
-          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, offset / this.texsizeX, 0));
-        } else if (i === 2) {
-          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 0, offset / this.texsizeY));
-        } else if (i === 3) {
-          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 
-            offset / this.texsizeX,
-            offset / this.texsizeY,
-          ));
-        }
+        this.gl.uniform2fv(
+          this.thickOffsetLoc,
+          fillThickOffset(this.scratch2, i, this.texsizeX, this.texsizeY)
+        );
 
         this.gl.drawArrays(drawMode, 0, numVerts);
       }
