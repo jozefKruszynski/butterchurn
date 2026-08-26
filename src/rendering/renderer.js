@@ -17,7 +17,7 @@ import Noise from "../noise/noise";
 import ImageTextures from "../image/imageTextures";
 import TitleText from "./text/titleText";
 import BlendPattern from "./blendPattern";
-import Utils from "../utils";
+import Utils, { Q_KEYS, T_KEYS, REG_KEYS } from "../utils";
 
 export default class Renderer {
   constructor(gl, audio, opts) {
@@ -52,14 +52,9 @@ export default class Renderer {
     this.invAspectx = 1.0 / this.aspectx;
     this.invAspecty = 1.0 / this.aspecty;
 
-    this.qs = Utils.range(1, 33).map((x) => `q${x}`);
-    this.ts = Utils.range(1, 9).map((x) => `t${x}`);
-    this.regs = Utils.range(0, 100).map((x) => {
-      if (x < 10) {
-        return `reg0${x}`;
-      }
-      return `reg${x}`;
-    });
+    this.qs = Q_KEYS;
+    this.ts = T_KEYS;
+    this.regs = REG_KEYS;
 
     this.blurRatios = [
       [0.5, 0.25],
@@ -86,16 +81,7 @@ export default class Renderer {
     this.bindFrameBufferTexture(this.targetFrameBuffer, this.targetTexture);
     this.bindFrameBufferTexture(this.compFrameBuffer, this.compTexture);
 
-    const params = {
-      pixelRatio: this.pixelRatio,
-      textureRatio: this.textureRatio,
-      texsizeX: this.texsizeX,
-      texsizeY: this.texsizeY,
-      mesh_width: this.mesh_width,
-      mesh_height: this.mesh_height,
-      aspectx: this.aspectx,
-      aspecty: this.aspecty,
-    };
+    const params = this.rendererParams();
     this.noise = new Noise(gl);
     this.image = new ImageTextures(gl);
     this.warpShader = new WarpShader(gl, this.noise, this.image, params);
@@ -176,6 +162,20 @@ export default class Renderer {
     }
   }
 
+  // the one place the shared shader/sprite constructor params are defined
+  rendererParams() {
+    return {
+      pixelRatio: this.pixelRatio,
+      textureRatio: this.textureRatio,
+      texsizeX: this.texsizeX,
+      texsizeY: this.texsizeY,
+      mesh_width: this.mesh_width,
+      mesh_height: this.mesh_height,
+      aspectx: this.aspectx,
+      aspecty: this.aspecty,
+    };
+  }
+
   static getHighestBlur(t) {
     if (/sampler_blur3/.test(t)) {
       return 3;
@@ -213,16 +213,7 @@ export default class Renderer {
       treb: this.audioLevels.treb,
       treb_att: this.audioLevels.treb_att,
     };
-    const params = {
-      pixelRatio: this.pixelRatio,
-      textureRatio: this.textureRatio,
-      texsizeX: this.texsizeX,
-      texsizeY: this.texsizeY,
-      mesh_width: this.mesh_width,
-      mesh_height: this.mesh_height,
-      aspectx: this.aspectx,
-      aspecty: this.aspecty,
-    };
+    const params = this.rendererParams();
 
     if (preset.useWASM) {
       this.preset.globalPools.perFrame.old_wave_mode.value = this.prevPreset.baseVals.wave_mode;
@@ -336,16 +327,7 @@ export default class Renderer {
   }
 
   updateGlobals() {
-    const params = {
-      pixelRatio: this.pixelRatio,
-      textureRatio: this.textureRatio,
-      texsizeX: this.texsizeX,
-      texsizeY: this.texsizeY,
-      mesh_width: this.mesh_width,
-      mesh_height: this.mesh_height,
-      aspectx: this.aspectx,
-      aspecty: this.aspecty,
-    };
+    const params = this.rendererParams();
     this.presetEquationRunner.updateGlobals(params);
     this.prevPresetEquationRunner.updateGlobals(params);
     this.warpShader.updateGlobals(params);
@@ -1193,6 +1175,19 @@ export default class Renderer {
     this.titleText.generateTitleTexture(text);
   }
 
+  pixelsToDataURL(data) {
+    const canvas = document.createElement("canvas");
+    canvas.width = this.texsizeX;
+    canvas.height = this.texsizeY;
+
+    const context = canvas.getContext("2d", { willReadFrequently: false });
+    const imageData = context.createImageData(this.texsizeX, this.texsizeY);
+    imageData.data.set(data);
+    context.putImageData(imageData, 0, 0);
+
+    return canvas.toDataURL();
+  }
+
   toDataURL() {
     const data = new Uint8Array(this.texsizeX * this.texsizeY * 4);
 
@@ -1232,19 +1227,12 @@ export default class Renderer {
       data.set(val, (this.texsizeY - i - 1) * this.texsizeX * 4)
     );
 
-    const canvas = document.createElement("canvas");
-    canvas.width = this.texsizeX;
-    canvas.height = this.texsizeY;
-
-    const context = canvas.getContext("2d", { willReadFrequently: false });
-    const imageData = context.createImageData(this.texsizeX, this.texsizeY);
-    imageData.data.set(data);
-    context.putImageData(imageData, 0, 0);
+    const url = this.pixelsToDataURL(data);
 
     this.gl.deleteTexture(compTexture);
     this.gl.deleteFramebuffer(compFrameBuffer);
 
-    return canvas.toDataURL();
+    return url;
   }
 
   warpBufferToDataURL() {
@@ -1261,15 +1249,6 @@ export default class Renderer {
       data
     );
 
-    const canvas = document.createElement("canvas");
-    canvas.width = this.texsizeX;
-    canvas.height = this.texsizeY;
-
-    const context = canvas.getContext("2d", { willReadFrequently: false });
-    const imageData = context.createImageData(this.texsizeX, this.texsizeY);
-    imageData.data.set(data);
-    context.putImageData(imageData, 0, 0);
-
-    return canvas.toDataURL();
+    return this.pixelsToDataURL(data);
   }
 }

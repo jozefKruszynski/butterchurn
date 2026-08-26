@@ -1,3 +1,9 @@
+export const Q_KEYS = [...Array(32)].map((_, i) => `q${i + 1}`);
+export const T_KEYS = [...Array(8)].map((_, i) => `t${i + 1}`);
+export const REG_KEYS = [...Array(100)].map(
+  (_, i) => `reg${String(i).padStart(2, "0")}`
+);
+
 export default class Utils {
   static atan2(x, y) {
     let a = Math.atan2(x, y);

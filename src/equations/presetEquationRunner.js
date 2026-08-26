@@ -1,4 +1,4 @@
-import Utils from "../utils";
+import Utils, { Q_KEYS, T_KEYS, REG_KEYS } from "../utils";
 import { getRNG } from "../utils/rngContext";
 
 // shared placeholder for presets whose equations never touch (g)megabuf;
@@ -19,14 +19,9 @@ export default class PresetEquationRunner {
     this.invAspectx = 1.0 / this.aspectx;
     this.invAspecty = 1.0 / this.aspecty;
 
-    this.qs = Utils.range(1, 33).map((x) => `q${x}`);
-    this.ts = Utils.range(1, 9).map((x) => `t${x}`);
-    this.regs = Utils.range(100).map((x) => {
-      if (x < 10) {
-        return `reg0${x}`;
-      }
-      return `reg${x}`;
-    });
+    this.qs = Q_KEYS;
+    this.ts = T_KEYS;
+    this.regs = REG_KEYS;
 
     this.initializeEquations(globalVars);
   }

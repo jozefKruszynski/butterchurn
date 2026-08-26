@@ -2,7 +2,7 @@ import { loadModule } from "eel-wasm";
 import ascLoader from "@assemblyscript/loader";
 import AudioProcessor from "./audio/audioProcessor";
 import Renderer from "./rendering/renderer";
-import Utils from "./utils";
+import { Q_KEYS, T_KEYS } from "./utils";
 import loadPresetFunctionsBuffer from "./assemblyscript/presetFunctions.ts";
 import { initializeRNG } from "./utils/rngContext";
 
@@ -152,8 +152,8 @@ export default class Visualizer {
       additive: 0,
     };
 
-    this.qs = Utils.range(1, 33).map((x) => `q${x}`);
-    this.ts = Utils.range(1, 9).map((x) => `t${x}`);
+    this.qs = Q_KEYS;
+    this.ts = T_KEYS;
 
     this.globalPerFrameVars = [
       "old_wave_mode",
@@ -308,126 +308,67 @@ export default class Visualizer {
     return combinedVals;
   }
 
-  createQVars() {
-    const wasmVars = {};
-
-    this.qs.forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
+  static makeGlobalPool(keys, baseVals) {
+    const pool = {};
+    for (const key of keys) {
+      pool[key] = new WebAssembly.Global(
         { value: "f64", mutable: true },
-        0
+        baseVals ? baseVals[key] : 0
       );
-    });
+    }
+    return pool;
+  }
 
-    return wasmVars;
+  createQVars() {
+    return Visualizer.makeGlobalPool(this.qs);
   }
 
   createTVars() {
-    const wasmVars = {};
-
-    this.ts.forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
-        { value: "f64", mutable: true },
-        0
-      );
-    });
-
-    return wasmVars;
+    return Visualizer.makeGlobalPool(this.ts);
   }
 
   createPerFramePool(baseVals) {
-    const wasmVars = {};
-
-    Object.keys(this.baseValsDefaults).forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
-        { value: "f64", mutable: true },
-        baseVals[key]
-      );
-    });
-
-    this.globalPerFrameVars.forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
-        { value: "f64", mutable: true },
-        0
-      );
-    });
-
-    return wasmVars;
+    return {
+      ...Visualizer.makeGlobalPool(Object.keys(this.baseValsDefaults), baseVals),
+      ...Visualizer.makeGlobalPool(this.globalPerFrameVars),
+    };
   }
 
   createPerPixelPool(baseVals) {
-    const wasmVars = {};
-
-    Object.keys(this.baseValsDefaults).forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
-        { value: "f64", mutable: true },
-        baseVals[key]
-      );
-    });
-
-    this.globalPerPixelVars.forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
-        { value: "f64", mutable: true },
-        0
-      );
-    });
-
-    return wasmVars;
+    return {
+      ...Visualizer.makeGlobalPool(Object.keys(this.baseValsDefaults), baseVals),
+      ...Visualizer.makeGlobalPool(this.globalPerPixelVars),
+    };
   }
 
   createCustomShapePerFramePool(baseVals) {
-    const wasmVars = {};
-
-    Object.keys(this.shapeBaseValsDefaults).forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
-        { value: "f64", mutable: true },
-        baseVals[key]
-      );
-    });
-
-    this.globalShapeVars.forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
-        { value: "f64", mutable: true },
-        0
-      );
-    });
-
-    return wasmVars;
+    return {
+      ...Visualizer.makeGlobalPool(
+        Object.keys(this.shapeBaseValsDefaults),
+        baseVals
+      ),
+      ...Visualizer.makeGlobalPool(this.globalShapeVars),
+    };
   }
 
   createCustomWavePerFramePool(baseVals) {
-    const wasmVars = {};
-
-    Object.keys(this.waveBaseValsDefaults).forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
-        { value: "f64", mutable: true },
-        baseVals[key]
-      );
-    });
-
-    this.globalWaveVars.forEach((key) => {
-      wasmVars[key] = new WebAssembly.Global(
-        { value: "f64", mutable: true },
-        0
-      );
-    });
-
-    return wasmVars;
+    return {
+      ...Visualizer.makeGlobalPool(
+        Object.keys(this.waveBaseValsDefaults),
+        baseVals
+      ),
+      ...Visualizer.makeGlobalPool(this.globalWaveVars),
+    };
   }
 
   static makeShapeResetPool(pool, variables, idx) {
-    return variables.reduce((acc, variable) => {
-      return { ...acc, [`${variable}_${idx}`]: pool[variable] };
-    }, {});
+    return Object.fromEntries(
+      variables.map((variable) => [`${variable}_${idx}`, pool[variable]])
+    );
   }
 
   static base64ToArrayBuffer(base64) {
-    var binaryString = window.atob(base64);
-    var len = binaryString.length;
-    var bytes = new Uint8Array(len);
-    for (var i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes.buffer;
+    return Uint8Array.from(window.atob(base64), (c) => c.charCodeAt(0)).buffer;
   }
 
   async loadPreset(presetMap, blendTime = 0) {
