@@ -18,6 +18,20 @@ export default class TitleText {
     this.positionVertexBuf = this.gl.createBuffer();
     this.vertexBuf = this.gl.createBuffer();
 
+    // grid geometry is built once; upload once
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuf);
+    this.gl.bufferData(
+      this.gl.ELEMENT_ARRAY_BUFFER,
+      this.indices,
+      this.gl.STATIC_DRAW
+    );
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.vertices,
+      this.gl.STATIC_DRAW
+    );
+
     this.canvas = document.createElement("canvas");
     this.canvas.width = this.texsizeX;
     this.canvas.height = this.texsizeY;
@@ -304,18 +318,8 @@ export default class TitleText {
     const progressUvs = this.generateUvs(progress, flip, globalVars);
 
     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuf);
-    this.gl.bufferData(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      this.indices,
-      this.gl.STATIC_DRAW
-    );
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.vertices,
-      this.gl.STATIC_DRAW
-    );
 
     this.gl.vertexAttribPointer(
       this.positionLocation,

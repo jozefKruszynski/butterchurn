@@ -7,6 +7,13 @@ export default class ResampleShader {
     this.positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
 
     this.vertexBuf = this.gl.createBuffer();
+    // the quad never changes; upload once
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuf);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.positions,
+      this.gl.STATIC_DRAW
+    );
 
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
@@ -65,11 +72,6 @@ export default class ResampleShader {
     this.gl.useProgram(this.shaderProgram);
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuf);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.positions,
-      this.gl.STATIC_DRAW
-    );
 
     this.gl.vertexAttribPointer(
       this.positionLocation,

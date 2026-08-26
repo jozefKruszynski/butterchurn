@@ -24,6 +24,8 @@ export default class WarpShader {
     this.warpUvVertexBuf = this.gl.createBuffer();
     this.warpColorVertexBuf = this.gl.createBuffer();
 
+    this.uploadStaticBuffers();
+
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
 
@@ -149,6 +151,23 @@ export default class WarpShader {
     this.invAspecty = 1.0 / this.aspecty;
 
     this.buildPositions();
+    this.uploadStaticBuffers();
+  }
+
+  // mesh geometry only changes with the mesh itself, not per frame
+  uploadStaticBuffers() {
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuf);
+    this.gl.bufferData(
+      this.gl.ELEMENT_ARRAY_BUFFER,
+      this.indices,
+      this.gl.STATIC_DRAW
+    );
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.vertices,
+      this.gl.STATIC_DRAW
+    );
   }
 
   createShader(shaderText = "") {
@@ -581,18 +600,8 @@ export default class WarpShader {
     this.gl.useProgram(this.shaderProgram);
 
     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuf);
-    this.gl.bufferData(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      this.indices,
-      this.gl.STATIC_DRAW
-    );
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.vertices,
-      this.gl.STATIC_DRAW
-    );
 
     this.gl.vertexAttribPointer(
       this.positionLocation,

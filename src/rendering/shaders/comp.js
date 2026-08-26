@@ -26,6 +26,8 @@ export default class CompShader {
     this.positionVertexBuf = this.gl.createBuffer();
     this.compColorVertexBuf = this.gl.createBuffer();
 
+    this.uploadStaticBuffers();
+
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
 
@@ -152,6 +154,23 @@ export default class CompShader {
     this.invAspecty = 1.0 / this.aspecty;
 
     this.buildPositions();
+    this.uploadStaticBuffers();
+  }
+
+  // grid geometry only changes with the globals, not per frame
+  uploadStaticBuffers() {
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuf);
+    this.gl.bufferData(
+      this.gl.ELEMENT_ARRAY_BUFFER,
+      this.indices,
+      this.gl.STATIC_DRAW
+    );
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.vertices,
+      this.gl.STATIC_DRAW
+    );
   }
 
   createShader(shaderText = "") {
@@ -744,18 +763,8 @@ export default class CompShader {
     this.gl.useProgram(this.shaderProgram);
 
     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuf);
-    this.gl.bufferData(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      this.indices,
-      this.gl.STATIC_DRAW
-    );
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.vertices,
-      this.gl.STATIC_DRAW
-    );
 
     this.gl.vertexAttribPointer(
       this.positionLocation,

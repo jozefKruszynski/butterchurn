@@ -26,6 +26,24 @@ export default class CustomShape {
     this.uvVertexBuf = this.gl.createBuffer();
     this.borderPositionVertexBuf = this.gl.createBuffer();
 
+    // allocate max-size GPU storage once; draws refill it with bufferSubData
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.positions,
+      this.gl.DYNAMIC_DRAW
+    );
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVertexBuf);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.colors, this.gl.DYNAMIC_DRAW);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.uvVertexBuf);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.uvs, this.gl.DYNAMIC_DRAW);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.borderPositionVertexBuf);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.borderPositions,
+      this.gl.DYNAMIC_DRAW
+    );
+
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
     this.createBorderShader();
@@ -520,11 +538,6 @@ export default class CustomShape {
 
   setupShapeBuffers(wrap) {
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.positions,
-      this.gl.DYNAMIC_DRAW
-    );
 
     this.gl.vertexAttribPointer(
       this.aPosLocation,
@@ -537,7 +550,6 @@ export default class CustomShape {
     this.gl.enableVertexAttribArray(this.aPosLocation);
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVertexBuf);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.colors, this.gl.DYNAMIC_DRAW);
 
     this.gl.vertexAttribPointer(
       this.aColorLocation,
@@ -550,7 +562,6 @@ export default class CustomShape {
     this.gl.enableVertexAttribArray(this.aColorLocation);
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.uvVertexBuf);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.uvs, this.gl.DYNAMIC_DRAW);
 
     this.gl.vertexAttribPointer(
       this.aUvLocation,
@@ -563,11 +574,6 @@ export default class CustomShape {
     this.gl.enableVertexAttribArray(this.aUvLocation);
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.borderPositionVertexBuf);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.borderPositions,
-      this.gl.DYNAMIC_DRAW
-    );
 
     this.gl.vertexAttribPointer(
       this.aBorderPosLoc,

@@ -41,6 +41,11 @@ export default class CustomShape {
     this.positionVertexBuf = this.gl.createBuffer();
     this.colorVertexBuf = this.gl.createBuffer();
 
+    // colors never change; upload once
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVertexBuf);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.colors, this.gl.STATIC_DRAW);
+    this.uploadPositions();
+
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
   }
@@ -52,6 +57,17 @@ export default class CustomShape {
     this.invAspecty = 1.0 / this.aspecty;
 
     this.generatePositions();
+    this.uploadPositions();
+  }
+
+  // positions change only with the aspect globals, not per frame
+  uploadPositions() {
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.positions,
+      this.gl.STATIC_DRAW
+    );
   }
 
   generatePositions() {
@@ -130,11 +146,6 @@ export default class CustomShape {
       this.gl.useProgram(this.shaderProgram);
 
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionVertexBuf);
-      this.gl.bufferData(
-        this.gl.ARRAY_BUFFER,
-        this.positions,
-        this.gl.STATIC_DRAW
-      );
 
       this.gl.vertexAttribPointer(
         this.aPosLocation,
@@ -147,11 +158,6 @@ export default class CustomShape {
       this.gl.enableVertexAttribArray(this.aPosLocation);
 
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVertexBuf);
-      this.gl.bufferData(
-        this.gl.ARRAY_BUFFER,
-        this.colors,
-        this.gl.STATIC_DRAW
-      );
 
       this.gl.vertexAttribPointer(
         this.aColorLocation,
