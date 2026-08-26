@@ -17,6 +17,7 @@ import Noise from "../noise/noise";
 import ImageTextures from "../image/imageTextures";
 import TitleText from "./text/titleText";
 import BlendPattern from "./blendPattern";
+import GpuTimer from "./gpuTimer";
 import Utils, { Q_KEYS, T_KEYS, REG_KEYS } from "../utils";
 
 // blended frame values: most lerp between presets, a few snap at halfway
@@ -103,6 +104,7 @@ export default class Renderer {
     this.prevWarpShader = new WarpShader(gl, this.noise, this.image, params);
     this.prevCompShader = new CompShader(gl, this.noise, this.image, params);
     this.numBlurPasses = 0;
+    this.gpuTimer = new GpuTimer(gl);
     this.blurShader1 = new BlurShader(0, this.blurRatios, gl, params);
     this.blurShader2 = new BlurShader(1, this.blurRatios, gl, params);
     this.blurShader3 = new BlurShader(2, this.blurRatios, gl, params);
@@ -840,6 +842,8 @@ export default class Renderer {
       mdVSFrameMixed = mdVSFrame;
     }
 
+    this.gpuTimer.section("warp");
+
     const swapTexture = this.targetTexture;
     this.targetTexture = this.prevTexture;
     this.prevTexture = swapTexture;
@@ -907,6 +911,8 @@ export default class Renderer {
         this.warpColor
       );
     }
+
+    this.gpuTimer.section("blur");
 
     if (this.numBlurPasses > 0) {
       this.blurShader1.renderBlurTexture(
@@ -1043,7 +1049,9 @@ export default class Renderer {
     this.mdVSFrame = mdVSFrame;
     this.mdVSFrameMixed = mdVSFrameMixed;
 
+    this.gpuTimer.section("comp");
     this.renderToScreen();
+    this.gpuTimer.frameEnd();
   }
 
   renderToScreen() {

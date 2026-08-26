@@ -17,25 +17,19 @@ export default class Visualizer {
     initializeRNG(opts);
     this.audio = new AudioProcessor(audioContext);
 
-    const vizWidth = opts.width || 1200;
-    const vizHeight = opts.height || 900;
-    if (window.OffscreenCanvas) {
-      this.internalCanvas = new OffscreenCanvas(vizWidth, vizHeight);
-    } else {
-      this.internalCanvas = document.createElement("canvas");
-      this.internalCanvas.width = vizWidth;
-      this.internalCanvas.height = vizHeight;
-    }
+    // render straight onto the given canvas: an intermediate canvas plus a 2d
+    // blit costs a full-frame copy per frame on bandwidth-starved GPUs
+    this.canvas = canvas;
+    this.canvas.width = opts.width || 1200;
+    this.canvas.height = opts.height || 900;
 
-    this.gl = this.internalCanvas.getContext("webgl2", {
+    this.gl = this.canvas.getContext("webgl2", {
       alpha: false,
       antialias: false,
       depth: false,
       stencil: false,
       premultipliedAlpha: false,
     });
-
-    this.outputGl = canvas.getContext('2d', { willReadFrequently: false });
 
     this.baseValsDefaults = {
       decay: 0.98,
@@ -282,7 +276,6 @@ export default class Visualizer {
 
   loseGLContext() {
     this.gl.getExtension("WEBGL_lose_context").loseContext();
-    this.outputGl = null;
   }
 
   connectAudio(audioNode) {
@@ -732,8 +725,8 @@ export default class Visualizer {
   }
 
   setRendererSize(width, height, opts = {}) {
-    this.internalCanvas.width = width;
-    this.internalCanvas.height = height;
+    this.canvas.width = width;
+    this.canvas.height = height;
     this.renderer.setRendererSize(width, height, opts);
   }
 
@@ -745,18 +738,12 @@ export default class Visualizer {
     this.renderer.setOutputAA(useAA);
   }
 
-  setCanvas(canvas) {
-    this.outputGl = canvas.getContext('2d', { willReadFrequently: false });
+  render(opts) {
+    return this.renderer.render(opts);
   }
 
-  render(opts) {
-    const renderOutput = this.renderer.render(opts);
-
-    if (this.outputGl) {
-      this.outputGl.drawImage(this.internalCanvas, 0, 0);
-    }
-
-    return renderOutput;
+  getGpuTimings() {
+    return this.renderer.gpuTimer.timings();
   }
 
   launchSongTitleAnim(text) {
