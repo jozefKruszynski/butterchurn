@@ -1,6 +1,22 @@
 import ShaderUtils from "./shaderUtils";
 import { getRNG } from "../../utils/rngContext";
 
+
+// scratch fillers: uniform*fv copies at call time, so one shared scratch is safe
+function fill2(arr, a, b) {
+  arr[0] = a;
+  arr[1] = b;
+  return arr;
+}
+
+function fill4(arr, a, b, c, d) {
+  arr[0] = a;
+  arr[1] = b;
+  arr[2] = c;
+  arr[3] = d;
+  return arr;
+}
+
 export default class WarpShader {
   constructor(gl, noise, image, opts = {}) {
     this.gl = gl;
@@ -25,6 +41,9 @@ export default class WarpShader {
     this.warpColorVertexBuf = this.gl.createBuffer();
 
     this.uploadStaticBuffers();
+
+    this.scratch2 = new Float32Array(2);
+    this.scratch4 = new Float32Array(4);
 
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
@@ -729,25 +748,25 @@ export default class WarpShader {
     }
 
     this.gl.uniform1f(this.decayLoc, mdVSFrame.decay);
-    this.gl.uniform2fv(this.resolutionLoc, [this.texsizeX, this.texsizeY]);
-    this.gl.uniform4fv(this.aspectLoc, [
+    this.gl.uniform2fv(this.resolutionLoc, fill2(this.scratch2, this.texsizeX, this.texsizeY));
+    this.gl.uniform4fv(this.aspectLoc, fill4(this.scratch4, 
       this.aspectx,
       this.aspecty,
       this.invAspectx,
       this.invAspecty,
-    ]);
-    this.gl.uniform4fv(this.texsizeLoc, [
+    ));
+    this.gl.uniform4fv(this.texsizeLoc, fill4(this.scratch4, 
       this.texsizeX,
       this.texsizeY,
       1.0 / this.texsizeX,
       1.0 / this.texsizeY,
-    ]);
-    this.gl.uniform4fv(this.texsizeNoiseLQLoc, [256, 256, 1 / 256, 1 / 256]);
-    this.gl.uniform4fv(this.texsizeNoiseMQLoc, [256, 256, 1 / 256, 1 / 256]);
-    this.gl.uniform4fv(this.texsizeNoiseHQLoc, [256, 256, 1 / 256, 1 / 256]);
-    this.gl.uniform4fv(this.texsizeNoiseLQLiteLoc, [32, 32, 1 / 32, 1 / 32]);
-    this.gl.uniform4fv(this.texsizeNoiseVolLQLoc, [32, 32, 1 / 32, 1 / 32]);
-    this.gl.uniform4fv(this.texsizeNoiseVolHQLoc, [32, 32, 1 / 32, 1 / 32]);
+    ));
+    this.gl.uniform4fv(this.texsizeNoiseLQLoc, fill4(this.scratch4, 256, 256, 1 / 256, 1 / 256));
+    this.gl.uniform4fv(this.texsizeNoiseMQLoc, fill4(this.scratch4, 256, 256, 1 / 256, 1 / 256));
+    this.gl.uniform4fv(this.texsizeNoiseHQLoc, fill4(this.scratch4, 256, 256, 1 / 256, 1 / 256));
+    this.gl.uniform4fv(this.texsizeNoiseLQLiteLoc, fill4(this.scratch4, 32, 32, 1 / 32, 1 / 32));
+    this.gl.uniform4fv(this.texsizeNoiseVolLQLoc, fill4(this.scratch4, 32, 32, 1 / 32, 1 / 32));
+    this.gl.uniform4fv(this.texsizeNoiseVolHQLoc, fill4(this.scratch4, 32, 32, 1 / 32, 1 / 32));
 
     this.gl.uniform1f(this.bassLoc, mdVSFrame.bass);
     this.gl.uniform1f(this.midLoc, mdVSFrame.mid);
@@ -767,112 +786,85 @@ export default class WarpShader {
     this.gl.uniform1f(this.frameLoc, mdVSFrame.frame);
     this.gl.uniform1f(this.fpsLoc, mdVSFrame.fps);
     this.gl.uniform4fv(this.randPresetLoc, mdVSFrame.rand_preset);
-    this.gl.uniform4fv(
-      this.randFrameLoc,
-      new Float32Array([
+    this.gl.uniform4fv(this.randFrameLoc, fill4(this.scratch4, 
         this.rng.random(),
         this.rng.random(),
         this.rng.random(),
         this.rng.random(),
-      ])
-    );
+      ));
 
-    this.gl.uniform4fv(
-      this.qaLoc,
-      new Float32Array([
+    this.gl.uniform4fv(this.qaLoc, fill4(this.scratch4, 
         mdVSQs.q1 || 0,
         mdVSQs.q2 || 0,
         mdVSQs.q3 || 0,
         mdVSQs.q4 || 0,
-      ])
-    );
-    this.gl.uniform4fv(
-      this.qbLoc,
-      new Float32Array([
+      ));
+    this.gl.uniform4fv(this.qbLoc, fill4(this.scratch4, 
         mdVSQs.q5 || 0,
         mdVSQs.q6 || 0,
         mdVSQs.q7 || 0,
         mdVSQs.q8 || 0,
-      ])
-    );
-    this.gl.uniform4fv(
-      this.qcLoc,
-      new Float32Array([
+      ));
+    this.gl.uniform4fv(this.qcLoc, fill4(this.scratch4, 
         mdVSQs.q9 || 0,
         mdVSQs.q10 || 0,
         mdVSQs.q11 || 0,
         mdVSQs.q12 || 0,
-      ])
-    );
-    this.gl.uniform4fv(
-      this.qdLoc,
-      new Float32Array([
+      ));
+    this.gl.uniform4fv(this.qdLoc, fill4(this.scratch4, 
         mdVSQs.q13 || 0,
         mdVSQs.q14 || 0,
         mdVSQs.q15 || 0,
         mdVSQs.q16 || 0,
-      ])
-    );
-    this.gl.uniform4fv(
-      this.qeLoc,
-      new Float32Array([
+      ));
+    this.gl.uniform4fv(this.qeLoc, fill4(this.scratch4, 
         mdVSQs.q17 || 0,
         mdVSQs.q18 || 0,
         mdVSQs.q19 || 0,
         mdVSQs.q20 || 0,
-      ])
-    );
-    this.gl.uniform4fv(
-      this.qfLoc,
-      new Float32Array([
+      ));
+    this.gl.uniform4fv(this.qfLoc, fill4(this.scratch4, 
         mdVSQs.q21 || 0,
         mdVSQs.q22 || 0,
         mdVSQs.q23 || 0,
         mdVSQs.q24 || 0,
-      ])
-    );
-    this.gl.uniform4fv(
-      this.qgLoc,
-      new Float32Array([
+      ));
+    this.gl.uniform4fv(this.qgLoc, fill4(this.scratch4, 
         mdVSQs.q25 || 0,
         mdVSQs.q26 || 0,
         mdVSQs.q27 || 0,
         mdVSQs.q28 || 0,
-      ])
-    );
-    this.gl.uniform4fv(
-      this.qhLoc,
-      new Float32Array([
+      ));
+    this.gl.uniform4fv(this.qhLoc, fill4(this.scratch4, 
         mdVSQs.q29 || 0,
         mdVSQs.q30 || 0,
         mdVSQs.q31 || 0,
         mdVSQs.q32 || 0,
-      ])
-    );
-    this.gl.uniform4fv(this.slowRoamCosLoc, [
+      ));
+    this.gl.uniform4fv(this.slowRoamCosLoc, fill4(this.scratch4, 
       0.5 + 0.5 * Math.cos(mdVSFrame.time * 0.005),
       0.5 + 0.5 * Math.cos(mdVSFrame.time * 0.008),
       0.5 + 0.5 * Math.cos(mdVSFrame.time * 0.013),
       0.5 + 0.5 * Math.cos(mdVSFrame.time * 0.022),
-    ]);
-    this.gl.uniform4fv(this.roamCosLoc, [
+    ));
+    this.gl.uniform4fv(this.roamCosLoc, fill4(this.scratch4, 
       0.5 + 0.5 * Math.cos(mdVSFrame.time * 0.3),
       0.5 + 0.5 * Math.cos(mdVSFrame.time * 1.3),
       0.5 + 0.5 * Math.cos(mdVSFrame.time * 5.0),
       0.5 + 0.5 * Math.cos(mdVSFrame.time * 20.0),
-    ]);
-    this.gl.uniform4fv(this.slowRoamSinLoc, [
+    ));
+    this.gl.uniform4fv(this.slowRoamSinLoc, fill4(this.scratch4, 
       0.5 + 0.5 * Math.sin(mdVSFrame.time * 0.005),
       0.5 + 0.5 * Math.sin(mdVSFrame.time * 0.008),
       0.5 + 0.5 * Math.sin(mdVSFrame.time * 0.013),
       0.5 + 0.5 * Math.sin(mdVSFrame.time * 0.022),
-    ]);
-    this.gl.uniform4fv(this.roamSinLoc, [
+    ));
+    this.gl.uniform4fv(this.roamSinLoc, fill4(this.scratch4, 
       0.5 + 0.5 * Math.sin(mdVSFrame.time * 0.3),
       0.5 + 0.5 * Math.sin(mdVSFrame.time * 1.3),
       0.5 + 0.5 * Math.sin(mdVSFrame.time * 5.0),
       0.5 + 0.5 * Math.sin(mdVSFrame.time * 20.0),
-    ]);
+    ));
 
     this.bindBlurVals(blurMins, blurMaxs);
 

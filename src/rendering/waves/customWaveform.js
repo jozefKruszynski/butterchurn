@@ -2,6 +2,14 @@ import Utils from "../../utils";
 import ShaderUtils from "../shaders/shaderUtils";
 import WaveUtils from "./waveUtils";
 
+
+// uniform2fv copies at call time, so one shared scratch avoids per-call arrays
+function fill2(arr, a, b) {
+  arr[0] = a;
+  arr[1] = b;
+  return arr;
+}
+
 export default class CustomWaveform {
   constructor(index, gl, opts) {
     this.index = index;
@@ -28,6 +36,8 @@ export default class CustomWaveform {
 
     this.positionVertexBuf = this.gl.createBuffer();
     this.colorVertexBuf = this.gl.createBuffer();
+
+    this.scratch2 = new Float32Array(2);
 
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
@@ -413,16 +423,16 @@ export default class CustomWaveform {
       for (let i = 0; i < instances; i++) {
         const offset = 2;
         if (i === 0) {
-          this.gl.uniform2fv(this.thickOffsetLoc, [0, 0]);
+          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 0, 0));
         } else if (i === 1) {
-          this.gl.uniform2fv(this.thickOffsetLoc, [offset / this.texsizeX, 0]);
+          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, offset / this.texsizeX, 0));
         } else if (i === 2) {
-          this.gl.uniform2fv(this.thickOffsetLoc, [0, offset / this.texsizeY]);
+          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 0, offset / this.texsizeY));
         } else if (i === 3) {
-          this.gl.uniform2fv(this.thickOffsetLoc, [
+          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 
             offset / this.texsizeX,
             offset / this.texsizeY,
-          ]);
+          ));
         }
 
         this.gl.drawArrays(drawMode, 0, numVerts);

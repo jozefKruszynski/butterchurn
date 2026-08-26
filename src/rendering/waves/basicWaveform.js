@@ -1,6 +1,14 @@
 import ShaderUtils from "../shaders/shaderUtils";
 import WaveUtils from "./waveUtils";
 
+
+// uniform2fv copies at call time, so one shared scratch avoids per-call arrays
+function fill2(arr, a, b) {
+  arr[0] = a;
+  arr[1] = b;
+  return arr;
+}
+
 export default class BasicWaveform {
   constructor(gl, opts = {}) {
     this.gl = gl;
@@ -20,6 +28,8 @@ export default class BasicWaveform {
     this.aspecty = opts.aspecty;
     this.invAspectx = 1.0 / this.aspectx;
     this.invAspecty = 1.0 / this.aspecty;
+
+    this.scratch2 = new Float32Array(2);
 
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
@@ -83,16 +93,19 @@ export default class BasicWaveform {
     );
   }
 
-  static processWaveform(timeArray, mdVSFrame) {
-    const waveform = [];
+  static processWaveform(timeArray, mdVSFrame, out) {
+    const waveform =
+      out && out.length === timeArray.length
+        ? out
+        : new Float32Array(timeArray.length);
 
     const scale = mdVSFrame.wave_scale / 128.0;
     const smooth = mdVSFrame.wave_smoothing;
     const smooth2 = scale * (1.0 - smooth);
 
-    waveform.push(timeArray[0] * scale);
+    waveform[0] = timeArray[0] * scale;
     for (let i = 1; i < timeArray.length; i++) {
-      waveform.push(timeArray[i] * smooth2 + waveform[i - 1] * smooth);
+      waveform[i] = timeArray[i] * smooth2 + waveform[i - 1] * smooth;
     }
 
     return waveform;
@@ -103,8 +116,16 @@ export default class BasicWaveform {
     const vol = (mdVSFrame.bass + mdVSFrame.mid + mdVSFrame.treb) / 3.0;
 
     if (vol > -0.01 && alpha > 0.001 && timeArrayL.length > 0) {
-      const waveL = BasicWaveform.processWaveform(timeArrayL, mdVSFrame);
-      const waveR = BasicWaveform.processWaveform(timeArrayR, mdVSFrame);
+      const waveL = (this.waveLScratch = BasicWaveform.processWaveform(
+        timeArrayL,
+        mdVSFrame,
+        this.waveLScratch
+      ));
+      const waveR = (this.waveRScratch = BasicWaveform.processWaveform(
+        timeArrayR,
+        mdVSFrame,
+        this.waveRScratch
+      ));
 
       const newWaveMode = Math.floor(mdVSFrame.wave_mode) % 8;
       const oldWaveMode = Math.floor(mdVSFrame.old_wave_mode) % 8;
@@ -638,16 +659,16 @@ export default class BasicWaveform {
       for (let i = 0; i < instances; i++) {
         const offset = 2;
         if (i === 0) {
-          this.gl.uniform2fv(this.thickOffsetLoc, [0, 0]);
+          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 0, 0));
         } else if (i === 1) {
-          this.gl.uniform2fv(this.thickOffsetLoc, [offset / this.texsizeX, 0]);
+          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, offset / this.texsizeX, 0));
         } else if (i === 2) {
-          this.gl.uniform2fv(this.thickOffsetLoc, [0, offset / this.texsizeY]);
+          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 0, offset / this.texsizeY));
         } else if (i === 3) {
-          this.gl.uniform2fv(this.thickOffsetLoc, [
+          this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 
             offset / this.texsizeX,
             offset / this.texsizeY,
-          ]);
+          ));
         }
 
         this.gl.drawArrays(drawMode, 0, this.smoothedNumVert);
@@ -675,22 +696,22 @@ export default class BasicWaveform {
         for (let i = 0; i < instances; i++) {
           const offset = 2;
           if (i === 0) {
-            this.gl.uniform2fv(this.thickOffsetLoc, [0, 0]);
+            this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 0, 0));
           } else if (i === 1) {
-            this.gl.uniform2fv(this.thickOffsetLoc, [
+            this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 
               offset / this.texsizeX,
               0,
-            ]);
+            ));
           } else if (i === 2) {
-            this.gl.uniform2fv(this.thickOffsetLoc, [
+            this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 
               0,
               offset / this.texsizeY,
-            ]);
+            ));
           } else if (i === 3) {
-            this.gl.uniform2fv(this.thickOffsetLoc, [
+            this.gl.uniform2fv(this.thickOffsetLoc, fill2(this.scratch2, 
               offset / this.texsizeX,
               offset / this.texsizeY,
-            ]);
+            ));
           }
 
           this.gl.drawArrays(drawMode, 0, this.smoothedNumVert);
