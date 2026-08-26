@@ -105,6 +105,15 @@ export default class Renderer {
     this.prevCompShader = new CompShader(gl, this.noise, this.image, params);
     this.numBlurPasses = 0;
     this.gpuTimer = new GpuTimer(gl);
+    // artwork tint state; a timed transition mirrors a CSS 1.5s ease
+    this.tintColor = [0, 0, 0];
+    this.tintAmount = 0;
+    this.tintFromColor = [0, 0, 0];
+    this.tintFromAmount = 0;
+    this.tintTargetColor = [0, 0, 0];
+    this.tintTargetAmount = 0;
+    this.tintTransitionStartAt = null;
+    this.tintStarted = false;
     this.blurShader1 = new BlurShader(0, this.blurRatios, gl, params);
     this.blurShader2 = new BlurShader(1, this.blurRatios, gl, params);
     this.blurShader3 = new BlurShader(2, this.blurRatios, gl, params);
@@ -1054,7 +1063,52 @@ export default class Renderer {
     this.gpuTimer.frameEnd();
   }
 
+  setTint(rgb) {
+    // an interrupted transition continues from wherever it stands
+    this.tintFromColor = [...this.tintColor];
+    this.tintFromAmount = this.tintAmount;
+    if (rgb) {
+      this.tintTargetColor = [rgb[0] / 255, rgb[1] / 255, rgb[2] / 255];
+      // the first color jumps straight in; only the strength fades
+      if (!this.tintStarted) {
+        this.tintStarted = true;
+        this.tintColor = [...this.tintTargetColor];
+        this.tintFromColor = [...this.tintTargetColor];
+      }
+      this.tintTargetAmount = 1;
+    } else {
+      this.tintTargetAmount = 0;
+    }
+    this.tintTransitionStartAt = -1;
+  }
+
+  updateTint() {
+    if (this.tintTransitionStartAt === -1) {
+      this.tintTransitionStartAt = performance.now();
+    }
+    if (this.tintTransitionStartAt !== null) {
+      const t = Math.min(
+        (performance.now() - this.tintTransitionStartAt) / 1500,
+        1
+      );
+      // smoothstep approximates the CSS ease timing function
+      const eased = t * t * (3 - 2 * t);
+      for (let i = 0; i < 3; i++) {
+        this.tintColor[i] =
+          this.tintFromColor[i] +
+          (this.tintTargetColor[i] - this.tintFromColor[i]) * eased;
+      }
+      this.tintAmount =
+        this.tintFromAmount +
+        (this.tintTargetAmount - this.tintFromAmount) * eased;
+      if (t >= 1) this.tintTransitionStartAt = null;
+    }
+    this.outputShader.tintColor = this.tintColor;
+    this.outputShader.tintAmount = this.tintAmount;
+  }
+
   renderToScreen() {
+    this.updateTint();
     if (this.outputFXAA) {
       this.bindFrambufferAndSetViewport(
         this.compFrameBuffer,

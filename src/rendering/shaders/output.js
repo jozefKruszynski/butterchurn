@@ -10,6 +10,9 @@ export default class OutputShader {
 
     this.positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
 
+    this.tintColor = [0, 0, 0];
+    this.tintAmount = 0;
+
     this.vertexBuf = this.gl.createBuffer();
     // the quad never changes; upload once
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuf);
@@ -81,6 +84,24 @@ export default class OutputShader {
        uniform vec4 texsize;
        uniform sampler2D uTexture;
 
+       uniform vec3 u_tint;
+       uniform float u_tintAmount;
+       float tintLum(vec3 c) { return dot(c, vec3(0.30, 0.59, 0.11)); }
+       vec3 tintClip(vec3 c) {
+         float l = tintLum(c);
+         float n = min(min(c.r, c.g), c.b);
+         float x = max(max(c.r, c.g), c.b);
+         if (n < 0.0 && l > n) c = l + ((c - l) * l) / (l - n);
+         if (x > 1.0 && x > l) c = l + ((c - l) * (1.0 - l)) / (x - l);
+         return c;
+       }
+       // the CSS Compositing "color" blend: keep luminance, take tint hue/sat
+       vec3 applyTint(vec3 rgb) {
+         if (u_tintAmount <= 0.0) return rgb;
+         vec3 blended = tintClip(u_tint + (tintLum(rgb) - tintLum(u_tint)));
+         return mix(rgb, blended, u_tintAmount);
+       }
+
        #ifndef FXAA_REDUCE_MIN
          #define FXAA_REDUCE_MIN   (1.0/ 128.0)
        #endif
@@ -132,6 +153,8 @@ export default class OutputShader {
          else
            color = vec4(rgbB, 1.0);
 
+         color.rgb = applyTint(color.rgb);
+
          fragColor = color;
        }`
     );
@@ -143,6 +166,11 @@ export default class OutputShader {
     this.textureLoc = this.gl.getUniformLocation(
       this.shaderProgram,
       "uTexture"
+    );
+    this.tintLoc = this.gl.getUniformLocation(this.shaderProgram, "u_tint");
+    this.tintAmountLoc = this.gl.getUniformLocation(
+      this.shaderProgram,
+      "u_tintAmount"
     );
     this.texsizeLoc = this.gl.getUniformLocation(this.shaderProgram, "texsize");
   }
@@ -167,8 +195,26 @@ export default class OutputShader {
        out vec4 fragColor;
        uniform sampler2D uTexture;
 
+       uniform vec3 u_tint;
+       uniform float u_tintAmount;
+       float tintLum(vec3 c) { return dot(c, vec3(0.30, 0.59, 0.11)); }
+       vec3 tintClip(vec3 c) {
+         float l = tintLum(c);
+         float n = min(min(c.r, c.g), c.b);
+         float x = max(max(c.r, c.g), c.b);
+         if (n < 0.0 && l > n) c = l + ((c - l) * l) / (l - n);
+         if (x > 1.0 && x > l) c = l + ((c - l) * (1.0 - l)) / (x - l);
+         return c;
+       }
+       // the CSS Compositing "color" blend: keep luminance, take tint hue/sat
+       vec3 applyTint(vec3 rgb) {
+         if (u_tintAmount <= 0.0) return rgb;
+         vec3 blended = tintClip(u_tint + (tintLum(rgb) - tintLum(u_tint)));
+         return mix(rgb, blended, u_tintAmount);
+       }
+
        void main(void) {
-         fragColor = vec4(texture(uTexture, uv).rgb, 1.0);
+         fragColor = vec4(applyTint(texture(uTexture, uv).rgb), 1.0);
        }`
     );
 
@@ -179,6 +225,11 @@ export default class OutputShader {
     this.textureLoc = this.gl.getUniformLocation(
       this.shaderProgram,
       "uTexture"
+    );
+    this.tintLoc = this.gl.getUniformLocation(this.shaderProgram, "u_tint");
+    this.tintAmountLoc = this.gl.getUniformLocation(
+      this.shaderProgram,
+      "u_tintAmount"
     );
   }
 
@@ -201,6 +252,13 @@ export default class OutputShader {
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 
     this.gl.uniform1i(this.textureLoc, 0);
+    this.gl.uniform3f(
+      this.tintLoc,
+      this.tintColor[0],
+      this.tintColor[1],
+      this.tintColor[2]
+    );
+    this.gl.uniform1f(this.tintAmountLoc, this.tintAmount);
 
     if (this.useFXAA()) {
       this.gl.uniform4fv(

@@ -746,6 +746,10 @@ export default class Visualizer {
     return this.renderer.gpuTimer.timings();
   }
 
+  setTint(rgb) {
+    this.renderer.setTint(rgb);
+  }
+
   launchSongTitleAnim(text) {
     this.renderer.launchSongTitleAnim(text);
   }
