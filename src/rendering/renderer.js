@@ -114,6 +114,8 @@ export default class Renderer {
     this.tintTargetAmount = 0;
     this.tintTransitionStartAt = null;
     this.tintStarted = false;
+    // runtime clamp on how many blur levels render; 3 = whatever the preset asks
+    this.maxBlurPasses = opts.maxBlurPasses ?? 3;
     this.blurShader1 = new BlurShader(0, this.blurRatios, gl, params);
     this.blurShader2 = new BlurShader(1, this.blurRatios, gl, params);
     this.blurShader3 = new BlurShader(2, this.blurRatios, gl, params);
@@ -876,14 +878,15 @@ export default class Renderer {
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
     const { blurMins, blurMaxs } = Renderer.getBlurValues(mdVSFrameMixed);
+    const [blurTex1, blurTex2, blurTex3] = this.effectiveBlurTextures();
 
     if (!this.blending) {
       this.warpShader.renderQuadTexture(
         false,
         this.prevTexture,
-        this.blurTexture1,
-        this.blurTexture2,
-        this.blurTexture3,
+        blurTex1,
+        blurTex2,
+        blurTex3,
         blurMins,
         blurMaxs,
         mdVSFrame,
@@ -895,9 +898,9 @@ export default class Renderer {
       this.prevWarpShader.renderQuadTexture(
         false,
         this.prevTexture,
-        this.blurTexture1,
-        this.blurTexture2,
-        this.blurTexture3,
+        blurTex1,
+        blurTex2,
+        blurTex3,
         blurMins,
         blurMaxs,
         this.prevMDVSFrame,
@@ -909,9 +912,9 @@ export default class Renderer {
       this.warpShader.renderQuadTexture(
         true,
         this.prevTexture,
-        this.blurTexture1,
-        this.blurTexture2,
-        this.blurTexture3,
+        blurTex1,
+        blurTex2,
+        blurTex3,
         blurMins,
         blurMaxs,
         mdVSFrameMixed,
@@ -923,7 +926,8 @@ export default class Renderer {
 
     this.gpuTimer.section("blur");
 
-    if (this.numBlurPasses > 0) {
+    const blurPasses = Math.min(this.numBlurPasses, this.maxBlurPasses);
+    if (blurPasses > 0) {
       this.blurShader1.renderBlurTexture(
         this.targetTexture,
         mdVSFrame,
@@ -931,7 +935,7 @@ export default class Renderer {
         blurMaxs
       );
 
-      if (this.numBlurPasses > 1) {
+      if (blurPasses > 1) {
         this.blurShader2.renderBlurTexture(
           this.blurTexture1,
           mdVSFrame,
@@ -939,7 +943,7 @@ export default class Renderer {
           blurMaxs
         );
 
-        if (this.numBlurPasses > 2) {
+        if (blurPasses > 2) {
           this.blurShader3.renderBlurTexture(
             this.blurTexture2,
             mdVSFrame,
@@ -1113,6 +1117,16 @@ export default class Renderer {
     this.outputShader.tintAmount = this.tintAmount;
   }
 
+  // Blur levels beyond the clamp alias the deepest rendered one, so presets
+  // sampling them see a sharper glow instead of a stale texture.
+  effectiveBlurTextures() {
+    const passes = Math.min(this.numBlurPasses, this.maxBlurPasses);
+    const tex1 = this.blurTexture1;
+    const tex2 = passes > 1 ? this.blurTexture2 : tex1;
+    const tex3 = passes > 2 ? this.blurTexture3 : tex2;
+    return [tex1, tex2, tex3];
+  }
+
   renderToScreen() {
     this.updateTint();
     if (this.outputFXAA) {
@@ -1131,14 +1145,15 @@ export default class Renderer {
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
     const { blurMins, blurMaxs } = Renderer.getBlurValues(this.mdVSFrameMixed);
+    const [blurTex1, blurTex2, blurTex3] = this.effectiveBlurTextures();
 
     if (!this.blending) {
       this.compShader.renderQuadTexture(
         false,
         this.targetTexture,
-        this.blurTexture1,
-        this.blurTexture2,
-        this.blurTexture3,
+        blurTex1,
+        blurTex2,
+        blurTex3,
         blurMins,
         blurMaxs,
         this.mdVSFrame,
@@ -1149,9 +1164,9 @@ export default class Renderer {
       this.prevCompShader.renderQuadTexture(
         false,
         this.targetTexture,
-        this.blurTexture1,
-        this.blurTexture2,
-        this.blurTexture3,
+        blurTex1,
+        blurTex2,
+        blurTex3,
         blurMins,
         blurMaxs,
         this.prevMDVSFrame,
@@ -1162,9 +1177,9 @@ export default class Renderer {
       this.compShader.renderQuadTexture(
         true,
         this.targetTexture,
-        this.blurTexture1,
-        this.blurTexture2,
-        this.blurTexture3,
+        blurTex1,
+        blurTex2,
+        blurTex3,
         blurMins,
         blurMaxs,
         this.mdVSFrameMixed,
@@ -1222,12 +1237,13 @@ export default class Renderer {
     this.bindFrameBufferTexture(compFrameBuffer, compTexture);
 
     const { blurMins, blurMaxs } = Renderer.getBlurValues(this.mdVSFrameMixed);
+    const [blurTex1, blurTex2, blurTex3] = this.effectiveBlurTextures();
     this.compShader.renderQuadTexture(
       false,
       this.targetTexture,
-      this.blurTexture1,
-      this.blurTexture2,
-      this.blurTexture3,
+      blurTex1,
+      blurTex2,
+      blurTex3,
       blurMins,
       blurMaxs,
       this.mdVSFrame,
