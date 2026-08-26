@@ -875,7 +875,7 @@ export default class Renderer {
       false
     );
 
-    if (!this.preset.useWASM) {
+    if (!this.preset.useWASM && this.presetEquationRunner.usesRegs) {
       Object.assign(this.regVars, Utils.pick(this.mdVSVertex, this.regs));
       Object.assign(globalVars, this.regVars);
     }

@@ -63,6 +63,8 @@ export default class PresetEquationRunner {
     );
     // "megabuf" also matches "gmegabuf"
     this.usesMegabuf = eqSources.some((src) => src && src.includes("megabuf"));
+    // reg00-reg99 globals; most presets never touch them
+    this.usesRegs = eqSources.some((src) => src && /\breg\d/.test(src));
 
     this.gmegabuf = this.usesMegabuf
       ? new Array(1048576).fill(0)
