@@ -1,4 +1,11 @@
 import ShaderUtils, { buildProgram, fill2, fill4 } from "./shaderUtils";
+import {
+  assignLocations,
+  COMMON_FRAG_UNIFORMS,
+  buildPlaneGeometry,
+  COMMON_LOCATIONS,
+  createMainSamplers,
+} from "./shaderCommon";
 import { getRNG } from "../../utils/rngContext";
 
 export default class CompShader {
@@ -35,116 +42,13 @@ export default class CompShader {
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
 
-    this.mainSampler = this.gl.createSampler();
-    this.mainSamplerFW = this.gl.createSampler();
-    this.mainSamplerFC = this.gl.createSampler();
-    this.mainSamplerPW = this.gl.createSampler();
-    this.mainSamplerPC = this.gl.createSampler();
-
-    gl.samplerParameteri(
-      this.mainSampler,
-      gl.TEXTURE_MIN_FILTER,
-      gl.LINEAR_MIPMAP_LINEAR
-    );
-    gl.samplerParameteri(this.mainSampler, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.samplerParameteri(this.mainSampler, gl.TEXTURE_WRAP_S, gl.REPEAT);
-    gl.samplerParameteri(this.mainSampler, gl.TEXTURE_WRAP_T, gl.REPEAT);
-
-    gl.samplerParameteri(
-      this.mainSamplerFW,
-      gl.TEXTURE_MIN_FILTER,
-      gl.LINEAR_MIPMAP_LINEAR
-    );
-    gl.samplerParameteri(this.mainSamplerFW, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.samplerParameteri(this.mainSamplerFW, gl.TEXTURE_WRAP_S, gl.REPEAT);
-    gl.samplerParameteri(this.mainSamplerFW, gl.TEXTURE_WRAP_T, gl.REPEAT);
-
-    gl.samplerParameteri(
-      this.mainSamplerFC,
-      gl.TEXTURE_MIN_FILTER,
-      gl.LINEAR_MIPMAP_LINEAR
-    );
-    gl.samplerParameteri(this.mainSamplerFC, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.samplerParameteri(
-      this.mainSamplerFC,
-      gl.TEXTURE_WRAP_S,
-      gl.CLAMP_TO_EDGE
-    );
-    gl.samplerParameteri(
-      this.mainSamplerFC,
-      gl.TEXTURE_WRAP_T,
-      gl.CLAMP_TO_EDGE
-    );
-
-    gl.samplerParameteri(
-      this.mainSamplerPW,
-      gl.TEXTURE_MIN_FILTER,
-      gl.NEAREST_MIPMAP_NEAREST
-    );
-    gl.samplerParameteri(this.mainSamplerPW, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.samplerParameteri(this.mainSamplerPW, gl.TEXTURE_WRAP_S, gl.REPEAT);
-    gl.samplerParameteri(this.mainSamplerPW, gl.TEXTURE_WRAP_T, gl.REPEAT);
-
-    gl.samplerParameteri(
-      this.mainSamplerPC,
-      gl.TEXTURE_MIN_FILTER,
-      gl.NEAREST_MIPMAP_NEAREST
-    );
-    gl.samplerParameteri(this.mainSamplerPC, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.samplerParameteri(
-      this.mainSamplerPC,
-      gl.TEXTURE_WRAP_S,
-      gl.CLAMP_TO_EDGE
-    );
-    gl.samplerParameteri(
-      this.mainSamplerPC,
-      gl.TEXTURE_WRAP_T,
-      gl.CLAMP_TO_EDGE
-    );
+    Object.assign(this, createMainSamplers(this.gl));
   }
 
-  // based on https://github.com/mrdoob/three.js/blob/master/src/geometries/PlaneGeometry.js
   buildPositions() {
-    const width = 2;
-    const height = 2;
-
-    const widthHalf = width / 2;
-    const heightHalf = height / 2;
-
-    const gridX = this.compWidth;
-    const gridY = this.compHeight;
-
-    const gridX1 = gridX + 1;
-    const gridY1 = gridY + 1;
-
-    const segmentWidth = width / gridX;
-    const segmentHeight = height / gridY;
-
-    const vertices = [];
-    for (let iy = 0; iy < gridY1; iy++) {
-      const y = iy * segmentHeight - heightHalf;
-      for (let ix = 0; ix < gridX1; ix++) {
-        const x = ix * segmentWidth - widthHalf;
-
-        vertices.push(x, -y, 0);
-      }
-    }
-
-    const indices = [];
-    for (let iy = 0; iy < gridY; iy++) {
-      for (let ix = 0; ix < gridX; ix++) {
-        const a = ix + gridX1 * iy;
-        const b = ix + gridX1 * (iy + 1);
-        const c = ix + 1 + gridX1 * (iy + 1);
-        const d = ix + 1 + gridX1 * iy;
-
-        indices.push(a, b, d);
-        indices.push(b, c, d);
-      }
-    }
-
-    this.vertices = new Float32Array(vertices);
-    this.indices = new Uint16Array(indices);
+    const { vertices, indices } = buildPlaneGeometry(this.compWidth, this.compHeight);
+    this.vertices = vertices;
+    this.indices = indices;
   }
 
   updateGlobals(opts) {
@@ -270,92 +174,7 @@ export default class CompShader {
       uniform int brighten;
       uniform int darken;
       uniform int solarize;
-      uniform vec2 resolution;
-      uniform vec4 aspect;
-      uniform vec4 texsize;
-      uniform vec4 texsize_noise_lq;
-      uniform vec4 texsize_noise_mq;
-      uniform vec4 texsize_noise_hq;
-      uniform vec4 texsize_noise_lq_lite;
-      uniform vec4 texsize_noisevol_lq;
-      uniform vec4 texsize_noisevol_hq;
-
-      uniform float bass;
-      uniform float mid;
-      uniform float treb;
-      uniform float vol;
-      uniform float bass_att;
-      uniform float mid_att;
-      uniform float treb_att;
-      uniform float vol_att;
-
-      uniform float frame;
-      uniform float fps;
-
-      uniform vec4 _qa;
-      uniform vec4 _qb;
-      uniform vec4 _qc;
-      uniform vec4 _qd;
-      uniform vec4 _qe;
-      uniform vec4 _qf;
-      uniform vec4 _qg;
-      uniform vec4 _qh;
-
-      #define q1 _qa.x
-      #define q2 _qa.y
-      #define q3 _qa.z
-      #define q4 _qa.w
-      #define q5 _qb.x
-      #define q6 _qb.y
-      #define q7 _qb.z
-      #define q8 _qb.w
-      #define q9 _qc.x
-      #define q10 _qc.y
-      #define q11 _qc.z
-      #define q12 _qc.w
-      #define q13 _qd.x
-      #define q14 _qd.y
-      #define q15 _qd.z
-      #define q16 _qd.w
-      #define q17 _qe.x
-      #define q18 _qe.y
-      #define q19 _qe.z
-      #define q20 _qe.w
-      #define q21 _qf.x
-      #define q22 _qf.y
-      #define q23 _qf.z
-      #define q24 _qf.w
-      #define q25 _qg.x
-      #define q26 _qg.y
-      #define q27 _qg.z
-      #define q28 _qg.w
-      #define q29 _qh.x
-      #define q30 _qh.y
-      #define q31 _qh.z
-      #define q32 _qh.w
-
-      uniform vec4 slow_roam_cos;
-      uniform vec4 roam_cos;
-      uniform vec4 slow_roam_sin;
-      uniform vec4 roam_sin;
-
-      uniform float blur1_min;
-      uniform float blur1_max;
-      uniform float blur2_min;
-      uniform float blur2_max;
-      uniform float blur3_min;
-      uniform float blur3_max;
-
-      uniform float scale1;
-      uniform float scale2;
-      uniform float scale3;
-      uniform float bias1;
-      uniform float bias2;
-      uniform float bias3;
-
-      uniform vec4 rand_frame;
-      uniform vec4 rand_preset;
-
+${COMMON_FRAG_UNIFORMS}
       uniform float fShader;
 
       float PI = ${Math.PI};
@@ -379,75 +198,11 @@ export default class CompShader {
       `.trim()
     );
 
-    this.positionLocation = this.gl.getAttribLocation(
-      this.shaderProgram,
-      "aPos"
-    );
+    assignLocations(this, this.gl, this.shaderProgram, COMMON_LOCATIONS);
     this.compColorLocation = this.gl.getAttribLocation(
       this.shaderProgram,
       "aCompColor"
     );
-    this.textureLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_main"
-    );
-    this.textureFWLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_fw_main"
-    );
-    this.textureFCLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_fc_main"
-    );
-    this.texturePWLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_pw_main"
-    );
-    this.texturePCLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_pc_main"
-    );
-    this.blurTexture1Loc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_blur1"
-    );
-    this.blurTexture2Loc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_blur2"
-    );
-    this.blurTexture3Loc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_blur3"
-    );
-    this.noiseLQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_noise_lq"
-    );
-    this.noiseMQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_noise_mq"
-    );
-    this.noiseHQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_noise_hq"
-    );
-    this.noiseLQLiteLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_noise_lq_lite"
-    );
-    this.noisePointLQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_pw_noise_lq"
-    );
-    this.noiseVolLQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_noisevol_lq"
-    );
-    this.noiseVolHQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "sampler_noisevol_hq"
-    );
-    this.timeLoc = this.gl.getUniformLocation(this.shaderProgram, "time");
     this.gammaAdjLoc = this.gl.getUniformLocation(
       this.shaderProgram,
       "gammaAdj"
@@ -474,117 +229,7 @@ export default class CompShader {
       this.shaderProgram,
       "solarize"
     );
-    this.texsizeLoc = this.gl.getUniformLocation(this.shaderProgram, "texsize");
-    this.texsizeNoiseLQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "texsize_noise_lq"
-    );
-    this.texsizeNoiseMQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "texsize_noise_mq"
-    );
-    this.texsizeNoiseHQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "texsize_noise_hq"
-    );
-    this.texsizeNoiseLQLiteLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "texsize_noise_lq_lite"
-    );
-    this.texsizeNoiseVolLQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "texsize_noisevol_lq"
-    );
-    this.texsizeNoiseVolHQLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "texsize_noisevol_hq"
-    );
-    this.resolutionLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "resolution"
-    );
-    this.aspectLoc = this.gl.getUniformLocation(this.shaderProgram, "aspect");
-    this.bassLoc = this.gl.getUniformLocation(this.shaderProgram, "bass");
-    this.midLoc = this.gl.getUniformLocation(this.shaderProgram, "mid");
-    this.trebLoc = this.gl.getUniformLocation(this.shaderProgram, "treb");
-    this.volLoc = this.gl.getUniformLocation(this.shaderProgram, "vol");
-    this.bassAttLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "bass_att"
-    );
-    this.midAttLoc = this.gl.getUniformLocation(this.shaderProgram, "mid_att");
-    this.trebAttLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "treb_att"
-    );
-    this.volAttLoc = this.gl.getUniformLocation(this.shaderProgram, "vol_att");
-    this.frameLoc = this.gl.getUniformLocation(this.shaderProgram, "frame");
-    this.fpsLoc = this.gl.getUniformLocation(this.shaderProgram, "fps");
-    this.blur1MinLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "blur1_min"
-    );
-    this.blur1MaxLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "blur1_max"
-    );
-    this.blur2MinLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "blur2_min"
-    );
-    this.blur2MaxLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "blur2_max"
-    );
-    this.blur3MinLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "blur3_min"
-    );
-    this.blur3MaxLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "blur3_max"
-    );
-    this.scale1Loc = this.gl.getUniformLocation(this.shaderProgram, "scale1");
-    this.scale2Loc = this.gl.getUniformLocation(this.shaderProgram, "scale2");
-    this.scale3Loc = this.gl.getUniformLocation(this.shaderProgram, "scale3");
-    this.bias1Loc = this.gl.getUniformLocation(this.shaderProgram, "bias1");
-    this.bias2Loc = this.gl.getUniformLocation(this.shaderProgram, "bias2");
-    this.bias3Loc = this.gl.getUniformLocation(this.shaderProgram, "bias3");
-    this.randPresetLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "rand_preset"
-    );
-    this.randFrameLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "rand_frame"
-    );
     this.fShaderLoc = this.gl.getUniformLocation(this.shaderProgram, "fShader");
-
-    this.qaLoc = this.gl.getUniformLocation(this.shaderProgram, "_qa");
-    this.qbLoc = this.gl.getUniformLocation(this.shaderProgram, "_qb");
-    this.qcLoc = this.gl.getUniformLocation(this.shaderProgram, "_qc");
-    this.qdLoc = this.gl.getUniformLocation(this.shaderProgram, "_qd");
-    this.qeLoc = this.gl.getUniformLocation(this.shaderProgram, "_qe");
-    this.qfLoc = this.gl.getUniformLocation(this.shaderProgram, "_qf");
-    this.qgLoc = this.gl.getUniformLocation(this.shaderProgram, "_qg");
-    this.qhLoc = this.gl.getUniformLocation(this.shaderProgram, "_qh");
-
-    this.slowRoamCosLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "slow_roam_cos"
-    );
-    this.roamCosLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "roam_cos"
-    );
-    this.slowRoamSinLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "slow_roam_sin"
-    );
-    this.roamSinLoc = this.gl.getUniformLocation(
-      this.shaderProgram,
-      "roam_sin"
-    );
 
     for (let i = 0; i < this.userTextures.length; i++) {
       const userTexture = this.userTextures[i];

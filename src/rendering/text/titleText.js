@@ -1,4 +1,5 @@
 import ShaderUtils, { buildProgram } from "../shaders/shaderUtils";
+import { buildPlaneGeometry } from "../shaders/shaderCommon";
 
 export default class TitleText {
   constructor(gl, opts = {}) {
@@ -128,47 +129,10 @@ export default class TitleText {
     this.canvas.height = this.texsizeY;
   }
 
-  // based on https://github.com/mrdoob/three.js/blob/master/src/geometries/PlaneGeometry.js
   buildPositions() {
-    const width = 2;
-    const height = 2;
-
-    const widthHalf = width / 2;
-    const heightHalf = height / 2;
-
-    const gridX = 15;
-    const gridY = 7;
-
-    const gridX1 = gridX + 1;
-    const gridY1 = gridY + 1;
-
-    const segmentWidth = width / gridX;
-    const segmentHeight = height / gridY;
-
-    const vertices = [];
-    for (let iy = 0; iy < gridY1; iy++) {
-      const y = iy * segmentHeight - heightHalf;
-      for (let ix = 0; ix < gridX1; ix++) {
-        const x = ix * segmentWidth - widthHalf;
-        vertices.push(x, -y, 0);
-      }
-    }
-
-    const indices = [];
-    for (let iy = 0; iy < gridY; iy++) {
-      for (let ix = 0; ix < gridX; ix++) {
-        const a = ix + gridX1 * iy;
-        const b = ix + gridX1 * (iy + 1);
-        const c = ix + 1 + gridX1 * (iy + 1);
-        const d = ix + 1 + gridX1 * iy;
-
-        indices.push(a, b, d);
-        indices.push(b, c, d);
-      }
-    }
-
-    this.vertices = new Float32Array(vertices);
-    this.indices = new Uint16Array(indices);
+    const { vertices, indices } = buildPlaneGeometry(15, 7);
+    this.vertices = vertices;
+    this.indices = indices;
   }
 
   createShader() {
