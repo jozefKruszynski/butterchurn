@@ -1117,13 +1117,14 @@ export default class Renderer {
     this.outputShader.tintAmount = this.tintAmount;
   }
 
-  // Blur levels beyond the clamp alias the deepest rendered one, so presets
-  // sampling them see a sharper glow instead of a stale texture.
+  // Blur levels suppressed by the clamp alias the deepest rendered one, so
+  // presets sampling them see a sharper glow instead of a frozen texture.
+  // Levels a preset simply does not render stay raw: their stale content is
+  // what unclamped rendering always sampled (mid-blend in particular).
   effectiveBlurTextures() {
-    const passes = Math.min(this.numBlurPasses, this.maxBlurPasses);
     const tex1 = this.blurTexture1;
-    const tex2 = passes > 1 ? this.blurTexture2 : tex1;
-    const tex3 = passes > 2 ? this.blurTexture3 : tex2;
+    const tex2 = this.maxBlurPasses > 1 ? this.blurTexture2 : tex1;
+    const tex3 = this.maxBlurPasses > 2 ? this.blurTexture3 : tex2;
     return [tex1, tex2, tex3];
   }
 
