@@ -1065,8 +1065,8 @@ export default class Renderer {
 
   setMaxShapeInstances(maxInstances) {
     const clamped = Math.min(1024, Math.max(1, Math.floor(maxInstances)));
-    for (const shape of this.customShapes) shape.maxInstances = clamped;
-    for (const shape of this.prevCustomShapes) shape.maxInstances = clamped;
+    for (const shape of this.customShapes) {shape.maxInstances = clamped;}
+    for (const shape of this.prevCustomShapes) {shape.maxInstances = clamped;}
   }
 
   setTint(rgb) {
@@ -1107,7 +1107,7 @@ export default class Renderer {
       this.tintAmount =
         this.tintFromAmount +
         (this.tintTargetAmount - this.tintFromAmount) * eased;
-      if (t >= 1) this.tintTransitionStartAt = null;
+      if (t >= 1) {this.tintTransitionStartAt = null;}
     }
     this.outputShader.tintColor = this.tintColor;
     this.outputShader.tintAmount = this.tintAmount;

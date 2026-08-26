@@ -378,9 +378,9 @@ export default class CustomShape {
   }
 
   ensureBatchCapacity(vertsNeeded) {
-    if (this.batchVertexCount + vertsNeeded <= this.batchCapacity) return;
+    if (this.batchVertexCount + vertsNeeded <= this.batchCapacity) {return;}
     let capacity = this.batchCapacity;
-    while (this.batchVertexCount + vertsNeeded > capacity) capacity *= 2;
+    while (this.batchVertexCount + vertsNeeded > capacity) {capacity *= 2;}
     const positions = new Float32Array(capacity * 3);
     positions.set(this.batchPositions);
     const colors = new Float32Array(capacity * 4);
@@ -525,13 +525,13 @@ export default class CustomShape {
   }
 
   flushBatch() {
-    if (this.batchVertexCount === 0) return;
+    if (this.batchVertexCount === 0) {return;}
     const gl = this.gl;
 
     gl.useProgram(this.shaderProgram);
 
     const grown = this.gpuCapacity < this.batchCapacity;
-    if (grown) this.gpuCapacity = this.batchCapacity;
+    if (grown) {this.gpuCapacity = this.batchCapacity;}
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionVertexBuf);
     if (grown) {
