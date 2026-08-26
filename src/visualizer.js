@@ -792,6 +792,10 @@ export default class Visualizer {
     this.renderer.loadExtraImages(imageData);
   }
 
+  setMaxBlurPasses(passes) {
+    this.renderer.maxBlurPasses = Math.min(3, Math.max(1, Math.floor(passes)));
+  }
+
   setRendererSize(width, height, opts = {}) {
     this.internalCanvas.width = width;
     this.internalCanvas.height = height;
