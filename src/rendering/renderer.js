@@ -19,6 +19,19 @@ import TitleText from "./text/titleText";
 import BlendPattern from "./blendPattern";
 import Utils, { Q_KEYS, T_KEYS, REG_KEYS } from "../utils";
 
+// blended frame values: most lerp between presets, a few snap at halfway
+const BLEND_LERP_KEYS = [
+  "decay", "wave_a", "wave_r", "wave_g", "wave_b", "wave_x", "wave_y",
+  "wave_mystery", "ob_size", "ob_r", "ob_g", "ob_b", "ob_a", "ib_size",
+  "ib_r", "ib_g", "ib_b", "ib_a", "mv_x", "mv_y", "mv_dx", "mv_dy", "mv_l",
+  "mv_r", "mv_g", "mv_b", "mv_a", "echo_zoom", "echo_alpha", "echo_orient",
+  "b1n", "b2n", "b3n", "b1x", "b2x", "b3x", "b1ed",
+];
+const BLEND_SNAP_KEYS = [
+  "wave_dots", "wave_thick", "additivewave", "wave_brighten", "darken_center",
+  "gammaadj", "wrap", "invert", "brighten", "darken", "solarize",
+];
+
 export default class Renderer {
   constructor(gl, audio, opts) {
     this.gl = gl;
@@ -640,68 +653,12 @@ export default class Renderer {
 
     const mixedFrame = Utils.cloneVars(mdVSFrame);
 
-    mixedFrame.decay = mix * mdVSFrame.decay + mix2 * mdVSFramePrev.decay;
-    mixedFrame.wave_a = mix * mdVSFrame.wave_a + mix2 * mdVSFramePrev.wave_a;
-    mixedFrame.wave_r = mix * mdVSFrame.wave_r + mix2 * mdVSFramePrev.wave_r;
-    mixedFrame.wave_g = mix * mdVSFrame.wave_g + mix2 * mdVSFramePrev.wave_g;
-    mixedFrame.wave_b = mix * mdVSFrame.wave_b + mix2 * mdVSFramePrev.wave_b;
-    mixedFrame.wave_x = mix * mdVSFrame.wave_x + mix2 * mdVSFramePrev.wave_x;
-    mixedFrame.wave_y = mix * mdVSFrame.wave_y + mix2 * mdVSFramePrev.wave_y;
-    mixedFrame.wave_mystery =
-      mix * mdVSFrame.wave_mystery + mix2 * mdVSFramePrev.wave_mystery;
-    mixedFrame.ob_size = mix * mdVSFrame.ob_size + mix2 * mdVSFramePrev.ob_size;
-    mixedFrame.ob_r = mix * mdVSFrame.ob_r + mix2 * mdVSFramePrev.ob_r;
-    mixedFrame.ob_g = mix * mdVSFrame.ob_g + mix2 * mdVSFramePrev.ob_g;
-    mixedFrame.ob_b = mix * mdVSFrame.ob_b + mix2 * mdVSFramePrev.ob_b;
-    mixedFrame.ob_a = mix * mdVSFrame.ob_a + mix2 * mdVSFramePrev.ob_a;
-    mixedFrame.ib_size = mix * mdVSFrame.ib_size + mix2 * mdVSFramePrev.ib_size;
-    mixedFrame.ib_r = mix * mdVSFrame.ib_r + mix2 * mdVSFramePrev.ib_r;
-    mixedFrame.ib_g = mix * mdVSFrame.ib_g + mix2 * mdVSFramePrev.ib_g;
-    mixedFrame.ib_b = mix * mdVSFrame.ib_b + mix2 * mdVSFramePrev.ib_b;
-    mixedFrame.ib_a = mix * mdVSFrame.ib_a + mix2 * mdVSFramePrev.ib_a;
-    mixedFrame.mv_x = mix * mdVSFrame.mv_x + mix2 * mdVSFramePrev.mv_x;
-    mixedFrame.mv_y = mix * mdVSFrame.mv_y + mix2 * mdVSFramePrev.mv_y;
-    mixedFrame.mv_dx = mix * mdVSFrame.mv_dx + mix2 * mdVSFramePrev.mv_dx;
-    mixedFrame.mv_dy = mix * mdVSFrame.mv_dy + mix2 * mdVSFramePrev.mv_dy;
-    mixedFrame.mv_l = mix * mdVSFrame.mv_l + mix2 * mdVSFramePrev.mv_l;
-    mixedFrame.mv_r = mix * mdVSFrame.mv_r + mix2 * mdVSFramePrev.mv_r;
-    mixedFrame.mv_g = mix * mdVSFrame.mv_g + mix2 * mdVSFramePrev.mv_g;
-    mixedFrame.mv_b = mix * mdVSFrame.mv_b + mix2 * mdVSFramePrev.mv_b;
-    mixedFrame.mv_a = mix * mdVSFrame.mv_a + mix2 * mdVSFramePrev.mv_a;
-    mixedFrame.echo_zoom =
-      mix * mdVSFrame.echo_zoom + mix2 * mdVSFramePrev.echo_zoom;
-    mixedFrame.echo_alpha =
-      mix * mdVSFrame.echo_alpha + mix2 * mdVSFramePrev.echo_alpha;
-    mixedFrame.echo_orient =
-      mix * mdVSFrame.echo_orient + mix2 * mdVSFramePrev.echo_orient;
-    mixedFrame.wave_dots =
-      mix < snapPoint ? mdVSFramePrev.wave_dots : mdVSFrame.wave_dots;
-    mixedFrame.wave_thick =
-      mix < snapPoint ? mdVSFramePrev.wave_thick : mdVSFrame.wave_thick;
-    mixedFrame.additivewave =
-      mix < snapPoint ? mdVSFramePrev.additivewave : mdVSFrame.additivewave;
-    mixedFrame.wave_brighten =
-      mix < snapPoint ? mdVSFramePrev.wave_brighten : mdVSFrame.wave_brighten;
-    mixedFrame.darken_center =
-      mix < snapPoint ? mdVSFramePrev.darken_center : mdVSFrame.darken_center;
-    mixedFrame.gammaadj =
-      mix < snapPoint ? mdVSFramePrev.gammaadj : mdVSFrame.gammaadj;
-    mixedFrame.wrap = mix < snapPoint ? mdVSFramePrev.wrap : mdVSFrame.wrap;
-    mixedFrame.invert =
-      mix < snapPoint ? mdVSFramePrev.invert : mdVSFrame.invert;
-    mixedFrame.brighten =
-      mix < snapPoint ? mdVSFramePrev.brighten : mdVSFrame.brighten;
-    mixedFrame.darken =
-      mix < snapPoint ? mdVSFramePrev.darken : mdVSFrame.darken;
-    mixedFrame.solarize =
-      mix < snapPoint ? mdVSFramePrev.solarize : mdVSFrame.solarize;
-    mixedFrame.b1n = mix * mdVSFrame.b1n + mix2 * mdVSFramePrev.b1n;
-    mixedFrame.b2n = mix * mdVSFrame.b2n + mix2 * mdVSFramePrev.b2n;
-    mixedFrame.b3n = mix * mdVSFrame.b3n + mix2 * mdVSFramePrev.b3n;
-    mixedFrame.b1x = mix * mdVSFrame.b1x + mix2 * mdVSFramePrev.b1x;
-    mixedFrame.b2x = mix * mdVSFrame.b2x + mix2 * mdVSFramePrev.b2x;
-    mixedFrame.b3x = mix * mdVSFrame.b3x + mix2 * mdVSFramePrev.b3x;
-    mixedFrame.b1ed = mix * mdVSFrame.b1ed + mix2 * mdVSFramePrev.b1ed;
+    for (const key of BLEND_LERP_KEYS) {
+      mixedFrame[key] = mix * mdVSFrame[key] + mix2 * mdVSFramePrev[key];
+    }
+    for (const key of BLEND_SNAP_KEYS) {
+      mixedFrame[key] = mix < snapPoint ? mdVSFramePrev[key] : mdVSFrame[key];
+    }
 
     return mixedFrame;
   }
