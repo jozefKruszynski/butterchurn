@@ -8,7 +8,7 @@ import TestServer from './utils/testServer.js';
 
 const FRAMES = 240;
 const WARMUP = 60;
-const SIZE = 1014;
+const SIZE = Number(process.env.SIZE) || 1014;
 
 // a path loads raw preset JSON (WASM path); "js:<name>" uses the
 // pre-converted pack inside the page (JS path)
@@ -47,11 +47,12 @@ if (process.env.SHOT) {
 }
 
 const timings = await page.evaluate(() => window.benchTimings);
+const wallMs = await page.evaluate(() => window.benchWallMs);
 const settled = timings.slice(WARMUP).sort((a, b) => a - b);
 const mean = settled.reduce((s, v) => s + v, 0) / settled.length;
 const pct = (p) => settled[Math.floor(settled.length * p)];
 console.log(
-  `frames=${settled.length} mean=${mean.toFixed(2)}ms p50=${pct(0.5).toFixed(2)}ms p90=${pct(0.9).toFixed(2)}ms max=${settled[settled.length - 1].toFixed(2)}ms`
+  `wall=${(wallMs / 1000).toFixed(2)}s fpsEff=${(timings.length / (wallMs / 1000)).toFixed(1)} frames=${settled.length} mean=${mean.toFixed(2)}ms p50=${pct(0.5).toFixed(2)}ms p90=${pct(0.9).toFixed(2)}ms max=${settled[settled.length - 1].toFixed(2)}ms`
 );
 
 await browser.close();

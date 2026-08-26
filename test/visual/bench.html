@@ -38,10 +38,12 @@
           const timings = [];
           let currentFrame = 0;
           window.renderComplete = false;
+          const wallStart = performance.now();
 
           function render() {
             if (currentFrame >= frames) {
               window.benchTimings = timings;
+              window.benchWallMs = performance.now() - wallStart;
               window.renderComplete = true;
               return;
             }

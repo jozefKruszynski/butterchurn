@@ -38,15 +38,16 @@ export default class CustomShape {
     this.borderPositions = new Float32Array((MAX_SIDES + 1) * 3);
 
     // instances sharing blend/texture state accumulate here and render as a
-    // single indexed draw; instance-heavy presets otherwise flood the driver
-    // with one buffer upload and draw call per instance
+    // single unindexed triangle-list draw; instance-heavy presets otherwise
+    // flood the driver with one buffer upload and draw call per instance
     this.batchCapacity = INITIAL_BATCH_VERTS;
     this.batchPositions = new Float32Array(this.batchCapacity * 3);
     this.batchColors = new Float32Array(this.batchCapacity * 4);
     this.batchUvs = new Float32Array(this.batchCapacity * 2);
-    this.batchIndices = new Uint32Array(this.batchCapacity * 3);
+    this.fanPositions = new Float32Array(VERTS_PER_INSTANCE * 3);
+    this.fanColors = new Float32Array(VERTS_PER_INSTANCE * 4);
+    this.fanUvs = new Float32Array(VERTS_PER_INSTANCE * 2);
     this.batchVertexCount = 0;
-    this.batchIndexCount = 0;
     this.batchTextured = false;
     this.batchAdditive = false;
     this.batchTexture = null;
@@ -62,7 +63,6 @@ export default class CustomShape {
     this.positionVertexBuf = this.gl.createBuffer();
     this.colorVertexBuf = this.gl.createBuffer();
     this.uvVertexBuf = this.gl.createBuffer();
-    this.indexBuf = this.gl.createBuffer();
     this.borderPositionVertexBuf = this.gl.createBuffer();
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.borderPositionVertexBuf);
@@ -385,12 +385,9 @@ export default class CustomShape {
     colors.set(this.batchColors);
     const uvs = new Float32Array(capacity * 2);
     uvs.set(this.batchUvs);
-    const indices = new Uint32Array(capacity * 3);
-    indices.set(this.batchIndices);
     this.batchPositions = positions;
     this.batchColors = colors;
     this.batchUvs = uvs;
-    this.batchIndices = indices;
     this.batchCapacity = capacity;
   }
 
@@ -454,67 +451,80 @@ export default class CustomShape {
       this.batchTexture = prevTexture;
     }
 
-    this.ensureBatchCapacity(sides + 2);
-    const base = this.batchVertexCount;
-    const positions = this.batchPositions;
-    const colors = this.batchColors;
-    const uvs = this.batchUvs;
+    // the fan is computed once into scratch, then expanded to a triangle
+    // list; ANGLE's Metal backend chokes on streamed element buffers, so the
+    // batch is unindexed on purpose
+    const fanPositions = this.fanPositions;
+    const fanColors = this.fanColors;
+    const fanUvs = this.fanUvs;
 
-    positions[base * 3 + 0] = x;
-    positions[base * 3 + 1] = y;
-    positions[base * 3 + 2] = 0;
+    fanPositions[0] = x;
+    fanPositions[1] = y;
+    fanPositions[2] = 0;
 
-    colors[base * 4 + 0] = r;
-    colors[base * 4 + 1] = g;
-    colors[base * 4 + 2] = b;
-    colors[base * 4 + 3] = a * blendProgress;
+    fanColors[0] = r;
+    fanColors[1] = g;
+    fanColors[2] = b;
+    fanColors[3] = a * blendProgress;
 
     if (isTextured) {
-      uvs[base * 2 + 0] = 0.5;
-      uvs[base * 2 + 1] = 0.5;
+      fanUvs[0] = 0.5;
+      fanUvs[1] = 0.5;
     }
 
     const quarterPi = Math.PI * 0.25;
     for (let k = 1; k <= sides + 1; k++) {
       const p = (k - 1) / sides;
       const pTwoPi = p * 2 * Math.PI;
-      const v = base + k;
 
       const angSum = pTwoPi + ang + quarterPi;
-      positions[v * 3 + 0] = x + rad * Math.cos(angSum) * this.aspecty;
-      positions[v * 3 + 1] = y + rad * Math.sin(angSum);
-      positions[v * 3 + 2] = 0;
+      fanPositions[k * 3 + 0] = x + rad * Math.cos(angSum) * this.aspecty;
+      fanPositions[k * 3 + 1] = y + rad * Math.sin(angSum);
+      fanPositions[k * 3 + 2] = 0;
 
-      colors[v * 4 + 0] = r2;
-      colors[v * 4 + 1] = g2;
-      colors[v * 4 + 2] = b2;
-      colors[v * 4 + 3] = a2 * blendProgress;
+      fanColors[k * 4 + 0] = r2;
+      fanColors[k * 4 + 1] = g2;
+      fanColors[k * 4 + 2] = b2;
+      fanColors[k * 4 + 3] = a2 * blendProgress;
 
       if (isTextured) {
         const texAngSum = pTwoPi + texAng + quarterPi;
-        uvs[v * 2 + 0] =
+        fanUvs[k * 2 + 0] =
           0.5 + ((0.5 * Math.cos(texAngSum)) / texZoom) * this.aspecty;
-        uvs[v * 2 + 1] = 0.5 + (0.5 * Math.sin(texAngSum)) / texZoom;
+        fanUvs[k * 2 + 1] = 0.5 + (0.5 * Math.sin(texAngSum)) / texZoom;
       }
 
       if (hasBorder) {
-        this.borderPositions[(k - 1) * 3 + 0] = positions[v * 3 + 0];
-        this.borderPositions[(k - 1) * 3 + 1] = positions[v * 3 + 1];
-        this.borderPositions[(k - 1) * 3 + 2] = positions[v * 3 + 2];
+        this.borderPositions[(k - 1) * 3 + 0] = fanPositions[k * 3 + 0];
+        this.borderPositions[(k - 1) * 3 + 1] = fanPositions[k * 3 + 1];
+        this.borderPositions[(k - 1) * 3 + 2] = fanPositions[k * 3 + 2];
       }
     }
 
-    // fan triangle k is (center, ring k, ring k+1); indexed triangles keep
+    // fan triangle k is (center, ring k, ring k+1); the expanded list keeps
     // that exact primitive order, so blending matches the per-instance draws
-    let idx = this.batchIndexCount;
-    const indices = this.batchIndices;
+    this.ensureBatchCapacity(sides * 3);
+    const positions = this.batchPositions;
+    const colors = this.batchColors;
+    const uvs = this.batchUvs;
+    let v = this.batchVertexCount;
     for (let k = 1; k <= sides; k++) {
-      indices[idx++] = base;
-      indices[idx++] = base + k;
-      indices[idx++] = base + k + 1;
+      for (const src of [0, k, k + 1]) {
+        positions[v * 3 + 0] = fanPositions[src * 3 + 0];
+        positions[v * 3 + 1] = fanPositions[src * 3 + 1];
+        positions[v * 3 + 2] = fanPositions[src * 3 + 2];
+        colors[v * 4 + 0] = fanColors[src * 4 + 0];
+        colors[v * 4 + 1] = fanColors[src * 4 + 1];
+        colors[v * 4 + 2] = fanColors[src * 4 + 2];
+        colors[v * 4 + 3] = fanColors[src * 4 + 3];
+        if (isTextured) {
+          uvs[v * 2 + 0] = fanUvs[src * 2 + 0];
+          uvs[v * 2 + 1] = fanUvs[src * 2 + 1];
+        }
+        v += 1;
+      }
     }
-    this.batchIndexCount = idx;
-    this.batchVertexCount += sides + 2;
+    this.batchVertexCount = v;
 
     if (hasBorder) {
       this.flushBatch();
@@ -578,19 +588,6 @@ export default class CustomShape {
     gl.vertexAttribPointer(this.aUvLocation, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(this.aUvLocation);
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuf);
-    if (grown) {
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.batchIndices, gl.DYNAMIC_DRAW);
-    } else {
-      gl.bufferSubData(
-        gl.ELEMENT_ARRAY_BUFFER,
-        0,
-        this.batchIndices,
-        0,
-        this.batchIndexCount
-      );
-    }
-
     gl.uniform1f(this.texturedLoc, this.batchTextured ? 1 : 0);
 
     gl.activeTexture(gl.TEXTURE0);
@@ -604,10 +601,9 @@ export default class CustomShape {
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     }
 
-    gl.drawElements(gl.TRIANGLES, this.batchIndexCount, gl.UNSIGNED_INT, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, this.batchVertexCount);
 
     this.batchVertexCount = 0;
-    this.batchIndexCount = 0;
   }
 
   drawBorderInstance(sides, isBorderThick) {
