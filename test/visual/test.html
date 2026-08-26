@@ -14,13 +14,26 @@
       }
     </style>
 
-    <script type="text/javascript" src="/node_modules/butterchurn-presets-js/lib/butterchurnPresets.min.js"></script>
-
     <script type="module">
       import butterchurn from '/dist/butterchurn.js';
 
+      // one page serves both engine paths; ?presets=js|wasm picks the pack
+      const presetType =
+        new URLSearchParams(location.search).get('presets') || 'js';
+      const packScript = document.createElement('script');
+      packScript.src = presetType === 'wasm'
+        ? '/node_modules/butterchurn-presets/dist/base.min.js'
+        : '/node_modules/butterchurn-presets-js/lib/butterchurnPresets.min.js';
+      const packLoaded = new Promise((resolve, reject) => {
+        packScript.onload = resolve;
+        packScript.onerror = () =>
+          reject(new Error('preset pack failed to load: ' + packScript.src));
+      });
+      document.head.appendChild(packScript);
+
       document.addEventListener("DOMContentLoaded", function() {
         window.startVisualization = async function(params) {
+          await packLoaded;
           const { width, height, presetName, audioData, frames, seed,
                   blendPresetName, blendTime, blendFrames } = params;
 
@@ -35,7 +48,9 @@
             seed: seed
           });
 
-          const presets = butterchurnPresets.getPresets();
+          const presets = presetType === 'wasm'
+            ? base.default
+            : butterchurnPresets.getPresets();
 
           const preset = presets[presetName];
           if (preset) {

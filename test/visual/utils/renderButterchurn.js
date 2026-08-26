@@ -18,7 +18,7 @@ async function renderButterchurn(page, serverUrl, width, height, presetName, aud
   page.on('console', (msg) => consoleLogs.push(msg.text()));
   page.on('pageerror', (err) => consoleLogs.push(String(err)));
 
-  await page.goto(`${serverUrl}/test-${presetType}.html`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${serverUrl}/test.html?presets=${presetType}`, { waitUntil: 'domcontentloaded' });
 
   const startTime = Date.now();
 

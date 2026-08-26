@@ -14,10 +14,9 @@ class TestServer {
     this.server = http.createServer((req, res) => {
       let filePath;
 
-      if (req.url === '/' || req.url === '/test-js.html') {
-        filePath = path.join(process.cwd(), 'test/visual/test-js.html');
-      } else if (req.url === '/test-wasm.html') {
-        filePath = path.join(process.cwd(), 'test/visual/test-wasm.html');
+      const [urlPath] = req.url.split('?');
+      if (urlPath === '/' || urlPath === '/test.html') {
+        filePath = path.join(process.cwd(), 'test/visual/test.html');
       } else if (req.url.startsWith('/')) {
         filePath = path.join(projectRoot, req.url);
         // keep requests inside the project root
