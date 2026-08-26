@@ -366,8 +366,21 @@ export default class Visualizer {
   }
 
   static makeShapeResetPool(pool, variables, idx) {
+    // instance and sides are not reset vars, but the instance driver in the
+    // presetFunctions module imports them from the same pool namespace
     return Object.fromEntries(
-      variables.map((variable) => [`${variable}_${idx}`, pool[variable]])
+      [...variables, "instance", "sides"].map((variable) => [
+        `${variable}_${idx}`,
+        pool[variable],
+      ])
+    );
+  }
+
+  static makeWavePointPool(pool, idx) {
+    return Object.fromEntries(
+      ["sample", "value1", "value2", "x", "y", "r", "g", "b", "a"].map(
+        (variable) => [`${variable}_${idx}`, pool[variable]]
+      )
     );
   }
 
@@ -522,6 +535,15 @@ export default class Visualizer {
         ...this.createCustomShapePerFramePool(this.shapeBaseValsDefaults),
       };
     }
+    // wave pools exist only for enabled waves; the import object below
+    // demands all four as well
+    for (let i = 0; i < 4; i++) {
+      wasmVarPools[`wavePerFrame${i}`] ??= {
+        ...qWasmVars,
+        ...tWasmVars,
+        ...this.createCustomWavePerFramePool(this.waveBaseValsDefaults),
+      };
+    }
 
     // the module bytes never change; compile once, instantiate per preset
     presetFunctionsModulePromise ??= WebAssembly.compile(
@@ -572,6 +594,34 @@ export default class Visualizer {
         shapePool3: Visualizer.makeShapeResetPool(
           wasmVarPools["shapePerFrame3"],
           this.shapeBaseVars,
+          3
+        ),
+        shapeEqs: {
+          shape0_frame_eqs: handleEmptyFunction(mod.exports.shapes_0_frame_eqs),
+          shape1_frame_eqs: handleEmptyFunction(mod.exports.shapes_1_frame_eqs),
+          shape2_frame_eqs: handleEmptyFunction(mod.exports.shapes_2_frame_eqs),
+          shape3_frame_eqs: handleEmptyFunction(mod.exports.shapes_3_frame_eqs),
+        },
+        waveEqs: {
+          wave0_point_eqs: handleEmptyFunction(mod.exports.waves_0_point_eqs),
+          wave1_point_eqs: handleEmptyFunction(mod.exports.waves_1_point_eqs),
+          wave2_point_eqs: handleEmptyFunction(mod.exports.waves_2_point_eqs),
+          wave3_point_eqs: handleEmptyFunction(mod.exports.waves_3_point_eqs),
+        },
+        wavePool0: Visualizer.makeWavePointPool(
+          wasmVarPools["wavePerFrame0"],
+          0
+        ),
+        wavePool1: Visualizer.makeWavePointPool(
+          wasmVarPools["wavePerFrame1"],
+          1
+        ),
+        wavePool2: Visualizer.makeWavePointPool(
+          wasmVarPools["wavePerFrame2"],
+          2
+        ),
+        wavePool3: Visualizer.makeWavePointPool(
+          wasmVarPools["wavePerFrame3"],
           3
         ),
         console: {
@@ -641,6 +691,20 @@ export default class Visualizer {
           presetFunctionsMod.exports[`shape${i}_save`]();
         preset.shapes[i].frame_eqs_restore = () =>
           presetFunctionsMod.exports[`shape${i}_restore`]();
+
+        // per-instance equations loop inside WASM; JS reads one dump array.
+        // The view is re-fetched per call since memory growth detaches it.
+        const instArr = presetFunctionsMod.exports.createFloat64Array(
+          1024 * 22
+        );
+        preset.shapes[i].frame_eqs_run_instances = (numInst, hasFrameEqs) => {
+          presetFunctionsMod.exports[`shape${i}_run_instances`](
+            instArr,
+            numInst,
+            hasFrameEqs ? 1 : 0
+          );
+          return presetFunctionsMod.exports.__getFloat64ArrayView(instArr);
+        };
       }
     }
 
@@ -660,6 +724,30 @@ export default class Visualizer {
         } else {
           wave.point_eqs = "";
         }
+
+        // per-point equations loop inside WASM over in/out dump arrays;
+        // views are re-fetched per call since memory growth detaches them
+        const pointsIn = presetFunctionsMod.exports.createFloat64Array(
+          512 * 2
+        );
+        const pointsOut = presetFunctionsMod.exports.createFloat64Array(
+          512 * 6
+        );
+        wave.point_eqs_buffers = () => ({
+          input: presetFunctionsMod.exports.__getFloat64ArrayView(pointsIn),
+          output: presetFunctionsMod.exports.__getFloat64ArrayView(pointsOut),
+        });
+        wave.point_eqs_run = (numPoints, hasPointEqs, r, g, b, a) =>
+          presetFunctionsMod.exports[`wave${i}_run_points`](
+            pointsIn,
+            pointsOut,
+            numPoints,
+            hasPointEqs ? 1 : 0,
+            r,
+            g,
+            b,
+            a
+          );
 
         preset.waves[i] = Object.assign({}, preset.waves[i], wave);
       }

@@ -335,20 +335,18 @@ export default class CustomShape {
           1,
           this.maxInstances ?? 1024
         );
+        // the equation loop runs inside WASM (restore/run per instance) and
+        // dumps every instance's values into one array; a single boundary
+        // crossing instead of dozens per instance
+        // (the frame_eqs presence check should check the JS equations
+        // because of comments)
+        const shape = presetEquationRunner.preset.shapes[this.index];
+        const view = shape.frame_eqs_run_instances(numInst, !!shape.frame_eqs);
+        const vals = this.instanceValsScratch;
         for (let j = 0; j < numInst; j++) {
-          varPool.instance.value = j;
-
-          // this condition should check the JS equations because of comments
-          if (presetEquationRunner.preset.shapes[this.index].frame_eqs) {
-            presetEquationRunner.preset.shapes[this.index].frame_eqs_restore();
-            presetEquationRunner.preset.restore_qs();
-            presetEquationRunner.preset.restore_ts();
-            presetEquationRunner.preset.shapes[this.index].frame_eqs();
-          }
-
-          const vals = this.instanceValsScratch;
-          for (const key of SHAPE_INSTANCE_KEYS) {
-            vals[key] = varPool[key].value;
+          const off = j * SHAPE_INSTANCE_KEYS.length;
+          for (let k = 0; k < SHAPE_INSTANCE_KEYS.length; k++) {
+            vals[SHAPE_INSTANCE_KEYS[k]] = view[off + k];
           }
           this.buildAndDrawInstance(vals, blendProgress, prevTexture);
         }

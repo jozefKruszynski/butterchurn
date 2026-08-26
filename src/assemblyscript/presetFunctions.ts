@@ -868,3 +868,418 @@ export function shape3_restore(): void {
   tex_ang_3 = tex_ang_3_save;
   additive_3 = additive_3_save;
 }
+
+// In-WASM equation drivers: the per-instance/per-point loops run here so a
+// frame costs one boundary crossing instead of tens of thousands.
+
+export function createFloat64Array(length: i32): Float64Array {
+  return new Float64Array(length);
+}
+
+@external("shapeEqs", "shape0_frame_eqs")
+declare function shape0_frame_eqs(): void;
+@external("shapePool0", "instance_0")
+declare let instance_0: f64;
+@external("shapePool0", "sides_0")
+declare let sides_0: f64;
+
+export function shape0_run_instances(
+  arr: Float64Array,
+  numInst: i32,
+  hasFrameEqs: bool
+): void {
+  for (let j: i32 = 0; j < numInst; j++) {
+    instance_0 = f64(j);
+    if (hasFrameEqs) {
+      shape0_restore();
+      restoreQs();
+      restoreTs();
+      shape0_frame_eqs();
+    }
+    const base: i32 = j * 22;
+    unchecked((arr[base + 0] = a_0));
+    unchecked((arr[base + 1] = a2_0));
+    unchecked((arr[base + 2] = additive_0));
+    unchecked((arr[base + 3] = ang_0));
+    unchecked((arr[base + 4] = b_0));
+    unchecked((arr[base + 5] = b2_0));
+    unchecked((arr[base + 6] = border_a_0));
+    unchecked((arr[base + 7] = border_b_0));
+    unchecked((arr[base + 8] = border_g_0));
+    unchecked((arr[base + 9] = border_r_0));
+    unchecked((arr[base + 10] = g_0));
+    unchecked((arr[base + 11] = g2_0));
+    unchecked((arr[base + 12] = r_0));
+    unchecked((arr[base + 13] = r2_0));
+    unchecked((arr[base + 14] = rad_0));
+    unchecked((arr[base + 15] = sides_0));
+    unchecked((arr[base + 16] = tex_ang_0));
+    unchecked((arr[base + 17] = tex_zoom_0));
+    unchecked((arr[base + 18] = textured_0));
+    unchecked((arr[base + 19] = thickoutline_0));
+    unchecked((arr[base + 20] = x_0));
+    unchecked((arr[base + 21] = y_0));
+  }
+}
+
+@external("shapeEqs", "shape1_frame_eqs")
+declare function shape1_frame_eqs(): void;
+@external("shapePool1", "instance_1")
+declare let instance_1: f64;
+@external("shapePool1", "sides_1")
+declare let sides_1: f64;
+
+export function shape1_run_instances(
+  arr: Float64Array,
+  numInst: i32,
+  hasFrameEqs: bool
+): void {
+  for (let j: i32 = 0; j < numInst; j++) {
+    instance_1 = f64(j);
+    if (hasFrameEqs) {
+      shape1_restore();
+      restoreQs();
+      restoreTs();
+      shape1_frame_eqs();
+    }
+    const base: i32 = j * 22;
+    unchecked((arr[base + 0] = a_1));
+    unchecked((arr[base + 1] = a2_1));
+    unchecked((arr[base + 2] = additive_1));
+    unchecked((arr[base + 3] = ang_1));
+    unchecked((arr[base + 4] = b_1));
+    unchecked((arr[base + 5] = b2_1));
+    unchecked((arr[base + 6] = border_a_1));
+    unchecked((arr[base + 7] = border_b_1));
+    unchecked((arr[base + 8] = border_g_1));
+    unchecked((arr[base + 9] = border_r_1));
+    unchecked((arr[base + 10] = g_1));
+    unchecked((arr[base + 11] = g2_1));
+    unchecked((arr[base + 12] = r_1));
+    unchecked((arr[base + 13] = r2_1));
+    unchecked((arr[base + 14] = rad_1));
+    unchecked((arr[base + 15] = sides_1));
+    unchecked((arr[base + 16] = tex_ang_1));
+    unchecked((arr[base + 17] = tex_zoom_1));
+    unchecked((arr[base + 18] = textured_1));
+    unchecked((arr[base + 19] = thickoutline_1));
+    unchecked((arr[base + 20] = x_1));
+    unchecked((arr[base + 21] = y_1));
+  }
+}
+
+@external("shapeEqs", "shape2_frame_eqs")
+declare function shape2_frame_eqs(): void;
+@external("shapePool2", "instance_2")
+declare let instance_2: f64;
+@external("shapePool2", "sides_2")
+declare let sides_2: f64;
+
+export function shape2_run_instances(
+  arr: Float64Array,
+  numInst: i32,
+  hasFrameEqs: bool
+): void {
+  for (let j: i32 = 0; j < numInst; j++) {
+    instance_2 = f64(j);
+    if (hasFrameEqs) {
+      shape2_restore();
+      restoreQs();
+      restoreTs();
+      shape2_frame_eqs();
+    }
+    const base: i32 = j * 22;
+    unchecked((arr[base + 0] = a_2));
+    unchecked((arr[base + 1] = a2_2));
+    unchecked((arr[base + 2] = additive_2));
+    unchecked((arr[base + 3] = ang_2));
+    unchecked((arr[base + 4] = b_2));
+    unchecked((arr[base + 5] = b2_2));
+    unchecked((arr[base + 6] = border_a_2));
+    unchecked((arr[base + 7] = border_b_2));
+    unchecked((arr[base + 8] = border_g_2));
+    unchecked((arr[base + 9] = border_r_2));
+    unchecked((arr[base + 10] = g_2));
+    unchecked((arr[base + 11] = g2_2));
+    unchecked((arr[base + 12] = r_2));
+    unchecked((arr[base + 13] = r2_2));
+    unchecked((arr[base + 14] = rad_2));
+    unchecked((arr[base + 15] = sides_2));
+    unchecked((arr[base + 16] = tex_ang_2));
+    unchecked((arr[base + 17] = tex_zoom_2));
+    unchecked((arr[base + 18] = textured_2));
+    unchecked((arr[base + 19] = thickoutline_2));
+    unchecked((arr[base + 20] = x_2));
+    unchecked((arr[base + 21] = y_2));
+  }
+}
+
+@external("shapeEqs", "shape3_frame_eqs")
+declare function shape3_frame_eqs(): void;
+@external("shapePool3", "instance_3")
+declare let instance_3: f64;
+@external("shapePool3", "sides_3")
+declare let sides_3: f64;
+
+export function shape3_run_instances(
+  arr: Float64Array,
+  numInst: i32,
+  hasFrameEqs: bool
+): void {
+  for (let j: i32 = 0; j < numInst; j++) {
+    instance_3 = f64(j);
+    if (hasFrameEqs) {
+      shape3_restore();
+      restoreQs();
+      restoreTs();
+      shape3_frame_eqs();
+    }
+    const base: i32 = j * 22;
+    unchecked((arr[base + 0] = a_3));
+    unchecked((arr[base + 1] = a2_3));
+    unchecked((arr[base + 2] = additive_3));
+    unchecked((arr[base + 3] = ang_3));
+    unchecked((arr[base + 4] = b_3));
+    unchecked((arr[base + 5] = b2_3));
+    unchecked((arr[base + 6] = border_a_3));
+    unchecked((arr[base + 7] = border_b_3));
+    unchecked((arr[base + 8] = border_g_3));
+    unchecked((arr[base + 9] = border_r_3));
+    unchecked((arr[base + 10] = g_3));
+    unchecked((arr[base + 11] = g2_3));
+    unchecked((arr[base + 12] = r_3));
+    unchecked((arr[base + 13] = r2_3));
+    unchecked((arr[base + 14] = rad_3));
+    unchecked((arr[base + 15] = sides_3));
+    unchecked((arr[base + 16] = tex_ang_3));
+    unchecked((arr[base + 17] = tex_zoom_3));
+    unchecked((arr[base + 18] = textured_3));
+    unchecked((arr[base + 19] = thickoutline_3));
+    unchecked((arr[base + 20] = x_3));
+    unchecked((arr[base + 21] = y_3));
+  }
+}
+
+@external("waveEqs", "wave0_point_eqs")
+declare function wave0_point_eqs(): void;
+@external("wavePool0", "sample_0")
+declare let sample_w0: f64;
+@external("wavePool0", "value1_0")
+declare let value1_w0: f64;
+@external("wavePool0", "value2_0")
+declare let value2_w0: f64;
+@external("wavePool0", "x_0")
+declare let x_w0: f64;
+@external("wavePool0", "y_0")
+declare let y_w0: f64;
+@external("wavePool0", "r_0")
+declare let r_w0: f64;
+@external("wavePool0", "g_0")
+declare let g_w0: f64;
+@external("wavePool0", "b_0")
+declare let b_w0: f64;
+@external("wavePool0", "a_0")
+declare let a_w0: f64;
+
+export function wave0_run_points(
+  inArr: Float64Array,
+  outArr: Float64Array,
+  numPoints: i32,
+  hasPointEqs: bool,
+  frameR: f64,
+  frameG: f64,
+  frameB: f64,
+  frameA: f64
+): void {
+  for (let j: i32 = 0; j < numPoints; j++) {
+    const value1: f64 = unchecked(inArr[j * 2]);
+    const value2: f64 = unchecked(inArr[j * 2 + 1]);
+    sample_w0 = numPoints > 1 ? f64(j) / f64(numPoints - 1) : 0;
+    value1_w0 = value1;
+    value2_w0 = value2;
+    x_w0 = 0.5 + value1;
+    y_w0 = 0.5 + value2;
+    r_w0 = frameR;
+    g_w0 = frameG;
+    b_w0 = frameB;
+    a_w0 = frameA;
+    if (hasPointEqs) {
+      wave0_point_eqs();
+    }
+    const base: i32 = j * 6;
+    unchecked((outArr[base] = x_w0));
+    unchecked((outArr[base + 1] = y_w0));
+    unchecked((outArr[base + 2] = r_w0));
+    unchecked((outArr[base + 3] = g_w0));
+    unchecked((outArr[base + 4] = b_w0));
+    unchecked((outArr[base + 5] = a_w0));
+  }
+}
+
+@external("waveEqs", "wave1_point_eqs")
+declare function wave1_point_eqs(): void;
+@external("wavePool1", "sample_1")
+declare let sample_w1: f64;
+@external("wavePool1", "value1_1")
+declare let value1_w1: f64;
+@external("wavePool1", "value2_1")
+declare let value2_w1: f64;
+@external("wavePool1", "x_1")
+declare let x_w1: f64;
+@external("wavePool1", "y_1")
+declare let y_w1: f64;
+@external("wavePool1", "r_1")
+declare let r_w1: f64;
+@external("wavePool1", "g_1")
+declare let g_w1: f64;
+@external("wavePool1", "b_1")
+declare let b_w1: f64;
+@external("wavePool1", "a_1")
+declare let a_w1: f64;
+
+export function wave1_run_points(
+  inArr: Float64Array,
+  outArr: Float64Array,
+  numPoints: i32,
+  hasPointEqs: bool,
+  frameR: f64,
+  frameG: f64,
+  frameB: f64,
+  frameA: f64
+): void {
+  for (let j: i32 = 0; j < numPoints; j++) {
+    const value1: f64 = unchecked(inArr[j * 2]);
+    const value2: f64 = unchecked(inArr[j * 2 + 1]);
+    sample_w1 = numPoints > 1 ? f64(j) / f64(numPoints - 1) : 0;
+    value1_w1 = value1;
+    value2_w1 = value2;
+    x_w1 = 0.5 + value1;
+    y_w1 = 0.5 + value2;
+    r_w1 = frameR;
+    g_w1 = frameG;
+    b_w1 = frameB;
+    a_w1 = frameA;
+    if (hasPointEqs) {
+      wave1_point_eqs();
+    }
+    const base: i32 = j * 6;
+    unchecked((outArr[base] = x_w1));
+    unchecked((outArr[base + 1] = y_w1));
+    unchecked((outArr[base + 2] = r_w1));
+    unchecked((outArr[base + 3] = g_w1));
+    unchecked((outArr[base + 4] = b_w1));
+    unchecked((outArr[base + 5] = a_w1));
+  }
+}
+
+@external("waveEqs", "wave2_point_eqs")
+declare function wave2_point_eqs(): void;
+@external("wavePool2", "sample_2")
+declare let sample_w2: f64;
+@external("wavePool2", "value1_2")
+declare let value1_w2: f64;
+@external("wavePool2", "value2_2")
+declare let value2_w2: f64;
+@external("wavePool2", "x_2")
+declare let x_w2: f64;
+@external("wavePool2", "y_2")
+declare let y_w2: f64;
+@external("wavePool2", "r_2")
+declare let r_w2: f64;
+@external("wavePool2", "g_2")
+declare let g_w2: f64;
+@external("wavePool2", "b_2")
+declare let b_w2: f64;
+@external("wavePool2", "a_2")
+declare let a_w2: f64;
+
+export function wave2_run_points(
+  inArr: Float64Array,
+  outArr: Float64Array,
+  numPoints: i32,
+  hasPointEqs: bool,
+  frameR: f64,
+  frameG: f64,
+  frameB: f64,
+  frameA: f64
+): void {
+  for (let j: i32 = 0; j < numPoints; j++) {
+    const value1: f64 = unchecked(inArr[j * 2]);
+    const value2: f64 = unchecked(inArr[j * 2 + 1]);
+    sample_w2 = numPoints > 1 ? f64(j) / f64(numPoints - 1) : 0;
+    value1_w2 = value1;
+    value2_w2 = value2;
+    x_w2 = 0.5 + value1;
+    y_w2 = 0.5 + value2;
+    r_w2 = frameR;
+    g_w2 = frameG;
+    b_w2 = frameB;
+    a_w2 = frameA;
+    if (hasPointEqs) {
+      wave2_point_eqs();
+    }
+    const base: i32 = j * 6;
+    unchecked((outArr[base] = x_w2));
+    unchecked((outArr[base + 1] = y_w2));
+    unchecked((outArr[base + 2] = r_w2));
+    unchecked((outArr[base + 3] = g_w2));
+    unchecked((outArr[base + 4] = b_w2));
+    unchecked((outArr[base + 5] = a_w2));
+  }
+}
+
+@external("waveEqs", "wave3_point_eqs")
+declare function wave3_point_eqs(): void;
+@external("wavePool3", "sample_3")
+declare let sample_w3: f64;
+@external("wavePool3", "value1_3")
+declare let value1_w3: f64;
+@external("wavePool3", "value2_3")
+declare let value2_w3: f64;
+@external("wavePool3", "x_3")
+declare let x_w3: f64;
+@external("wavePool3", "y_3")
+declare let y_w3: f64;
+@external("wavePool3", "r_3")
+declare let r_w3: f64;
+@external("wavePool3", "g_3")
+declare let g_w3: f64;
+@external("wavePool3", "b_3")
+declare let b_w3: f64;
+@external("wavePool3", "a_3")
+declare let a_w3: f64;
+
+export function wave3_run_points(
+  inArr: Float64Array,
+  outArr: Float64Array,
+  numPoints: i32,
+  hasPointEqs: bool,
+  frameR: f64,
+  frameG: f64,
+  frameB: f64,
+  frameA: f64
+): void {
+  for (let j: i32 = 0; j < numPoints; j++) {
+    const value1: f64 = unchecked(inArr[j * 2]);
+    const value2: f64 = unchecked(inArr[j * 2 + 1]);
+    sample_w3 = numPoints > 1 ? f64(j) / f64(numPoints - 1) : 0;
+    value1_w3 = value1;
+    value2_w3 = value2;
+    x_w3 = 0.5 + value1;
+    y_w3 = 0.5 + value2;
+    r_w3 = frameR;
+    g_w3 = frameG;
+    b_w3 = frameB;
+    a_w3 = frameA;
+    if (hasPointEqs) {
+      wave3_point_eqs();
+    }
+    const base: i32 = j * 6;
+    unchecked((outArr[base] = x_w3));
+    unchecked((outArr[base + 1] = y_w3));
+    unchecked((outArr[base + 2] = r_w3));
+    unchecked((outArr[base + 3] = g_w3));
+    unchecked((outArr[base + 4] = b_w3));
+    unchecked((outArr[base + 5] = a_w3));
+  }
+}

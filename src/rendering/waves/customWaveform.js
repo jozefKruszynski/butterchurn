@@ -224,44 +224,34 @@ export default class CustomWaveform {
             this.colors[j * 4 + 3] = a * alphaMult;
           }
         } else {
-          const varPool =
-            presetEquationRunner.preset.globalPools[
-              `wavePerFrame${this.index}`
-            ];
+          // the per-point equation loop runs inside WASM over in/out dump
+          // arrays; a single boundary crossing instead of many per point
+          const wave = presetEquationRunner.preset.waves[this.index];
+          const { input, output } = wave.point_eqs_buffers();
           for (let j = 0; j < this.samples; j++) {
-            const value1 = this.pointsData[0][j];
-            const value2 = this.pointsData[1][j];
-
-            varPool.sample.value =
-              this.samples > 1 ? j / (this.samples - 1) : 0;
-            varPool.value1.value = value1;
-            varPool.value2.value = value2;
-            varPool.x.value = 0.5 + value1;
-            varPool.y.value = 0.5 + value2;
-            varPool.r.value = frameR;
-            varPool.g.value = frameG;
-            varPool.b.value = frameB;
-            varPool.a.value = frameA;
-
-            if (waveEqs.point_eqs) {
-              presetEquationRunner.preset.waves[this.index].point_eqs();
-            }
-
-            const x = (varPool.x.value * 2 - 1) * this.invAspectx;
-            const y = (varPool.y.value * -2 + 1) * this.invAspecty;
-            const r = varPool.r.value;
-            const g = varPool.g.value;
-            const b = varPool.b.value;
-            const a = varPool.a.value;
-
-            this.positions[j * 3 + 0] = x;
-            this.positions[j * 3 + 1] = y;
+            input[j * 2] = this.pointsData[0][j];
+            input[j * 2 + 1] = this.pointsData[1][j];
+          }
+          wave.point_eqs_run(
+            this.samples,
+            !!waveEqs.point_eqs,
+            frameR,
+            frameG,
+            frameB,
+            frameA
+          );
+          for (let j = 0; j < this.samples; j++) {
+            const base = j * 6;
+            this.positions[j * 3 + 0] =
+              (output[base] * 2 - 1) * this.invAspectx;
+            this.positions[j * 3 + 1] =
+              (output[base + 1] * -2 + 1) * this.invAspecty;
             this.positions[j * 3 + 2] = 0;
 
-            this.colors[j * 4 + 0] = r;
-            this.colors[j * 4 + 1] = g;
-            this.colors[j * 4 + 2] = b;
-            this.colors[j * 4 + 3] = a * alphaMult;
+            this.colors[j * 4 + 0] = output[base + 2];
+            this.colors[j * 4 + 1] = output[base + 3];
+            this.colors[j * 4 + 2] = output[base + 4];
+            this.colors[j * 4 + 3] = output[base + 5] * alphaMult;
           }
         }
 
