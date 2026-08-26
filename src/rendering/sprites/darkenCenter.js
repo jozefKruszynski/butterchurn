@@ -1,13 +1,11 @@
 import ShaderUtils from "../shaders/shaderUtils";
 
-export default class CustomShape {
+export default class DarkenCenter {
   constructor(gl, opts) {
     this.gl = gl;
 
     this.aspectx = opts.aspectx;
     this.aspecty = opts.aspecty;
-    this.invAspectx = 1.0 / this.aspectx;
-    this.invAspecty = 1.0 / this.aspecty;
 
     this.generatePositions();
 
@@ -53,8 +51,6 @@ export default class CustomShape {
   updateGlobals(opts) {
     this.aspectx = opts.aspectx;
     this.aspecty = opts.aspecty;
-    this.invAspectx = 1.0 / this.aspectx;
-    this.invAspecty = 1.0 / this.aspecty;
 
     this.generatePositions();
     this.uploadPositions();

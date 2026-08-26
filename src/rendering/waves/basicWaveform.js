@@ -26,8 +26,6 @@ export default class BasicWaveform {
     this.texsizeY = opts.texsizeY;
     this.aspectx = opts.aspectx;
     this.aspecty = opts.aspecty;
-    this.invAspectx = 1.0 / this.aspectx;
-    this.invAspecty = 1.0 / this.aspecty;
 
     this.scratch2 = new Float32Array(2);
 
@@ -42,8 +40,6 @@ export default class BasicWaveform {
     this.texsizeY = opts.texsizeY;
     this.aspectx = opts.aspectx;
     this.aspecty = opts.aspecty;
-    this.invAspectx = 1.0 / this.aspectx;
-    this.invAspecty = 1.0 / this.aspecty;
   }
 
   createShader() {

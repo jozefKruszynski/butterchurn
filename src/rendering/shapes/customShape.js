@@ -22,8 +22,6 @@ export default class CustomShape {
 
     this.texsizeX = opts.texsizeX;
     this.texsizeY = opts.texsizeY;
-    this.mesh_width = opts.mesh_width;
-    this.mesh_height = opts.mesh_height;
     this.aspectx = opts.aspectx;
     this.aspecty = opts.aspecty;
     this.invAspectx = 1.0 / this.aspectx;
@@ -73,8 +71,6 @@ export default class CustomShape {
   updateGlobals(opts) {
     this.texsizeX = opts.texsizeX;
     this.texsizeY = opts.texsizeY;
-    this.mesh_width = opts.mesh_width;
-    this.mesh_height = opts.mesh_height;
     this.aspectx = opts.aspectx;
     this.aspecty = opts.aspecty;
     this.invAspectx = 1.0 / this.aspectx;
@@ -383,12 +379,12 @@ export default class CustomShape {
           mdVSUserKeysShape
         );
 
-        // eslint-disable-next-line no-param-reassign
+         
         presetEquationRunner.mdVSFrameMapShapes[
           this.index
         ] = mdVSNewFrameMapShape;
       } else {
-        // eslint-disable-next-line max-len
+         
         this.setupShapeBuffers(
           presetEquationRunner.preset.globalPools.perFrame.wrap.value
         );

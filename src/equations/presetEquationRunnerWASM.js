@@ -17,12 +17,6 @@ export default class PresetEquationRunnerWASM {
 
     this.qs = Utils.range(1, 33).map((x) => `q${x}`);
     this.ts = Utils.range(1, 9).map((x) => `t${x}`);
-    this.regs = Utils.range(100).map((x) => {
-      if (x < 10) {
-        return `reg0${x}`;
-      }
-      return `reg${x}`;
-    });
 
     this.globalKeys = [
       "frame",
@@ -165,7 +159,7 @@ export default class PresetEquationRunnerWASM {
 
     this.mdVS = Object.assign({}, this.preset.baseVals, mdVSBase);
 
-    // eslint-disable-next-line max-len
+     
     Utils.setWasm(
       this.preset.globalPools.perFrame,
       this.mdVS,
@@ -200,7 +194,7 @@ export default class PresetEquationRunnerWASM {
         const wave = this.preset.waves[i];
         const baseVals = wave.baseVals;
         if (baseVals.enabled !== 0) {
-          // eslint-disable-next-line max-len
+           
           Utils.setWasm(
             this.preset.globalPools[`wavePerFrame${i}`],
             baseVals,
@@ -210,7 +204,7 @@ export default class PresetEquationRunnerWASM {
             wave.init_eqs();
 
             // base vals need to be reset
-            // eslint-disable-next-line max-len
+             
             Utils.setWasm(
               this.preset.globalPools[`wavePerFrame${i}`],
               baseVals,
@@ -230,7 +224,7 @@ export default class PresetEquationRunnerWASM {
         const shape = this.preset.shapes[i];
         const baseVals = shape.baseVals;
         if (baseVals.enabled !== 0) {
-          // eslint-disable-next-line max-len
+           
           Utils.setWasm(
             this.preset.globalPools[`shapePerFrame${i}`],
             baseVals,
@@ -240,7 +234,7 @@ export default class PresetEquationRunnerWASM {
             shape.init_eqs();
 
             // base vals need to be reset
-            // eslint-disable-next-line max-len
+             
             Utils.setWasm(
               this.preset.globalPools[`shapePerFrame${i}`],
               baseVals,
@@ -285,7 +279,7 @@ export default class PresetEquationRunnerWASM {
 
     this.mdVSQAfterFrame = this.getQVars("perFrame");
 
-    // eslint-disable-next-line max-len
+     
     this.frameAndGlobalKeys ??= [...this.frameKeys, ...this.globalKeys];
     const mdVSFrame = Utils.pickWasm(
       this.preset.globalPools.perFrame,
@@ -297,7 +291,7 @@ export default class PresetEquationRunnerWASM {
     return mdVSFrame;
   }
 
-  /* eslint-disable max-len */
+   
   runWaveFrameEquations(waveIdx, globalVars) {
     const baseVals = this.preset.waves[waveIdx].baseVals;
     Utils.setWasm(
@@ -326,5 +320,5 @@ export default class PresetEquationRunnerWASM {
       this.waveFrameKeys
     );
   }
-  /* eslint-enable max-len */
+   
 }

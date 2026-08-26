@@ -11,7 +11,7 @@ export default class ImageTextures {
     // names ever attempted; blocks duplicate in-flight loads and retry storms
     this.attempted = new Set();
 
-    /* eslint-disable max-len */
+     
     this.clouds2Image = new Image();
     this.clouds2Image.onload = () => {
       this.samplers.clouds2 = this.gl.createTexture();
@@ -27,7 +27,7 @@ export default class ImageTextures {
     };
     this.emptyImage.src =
       "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
-    /* eslint-enable max-len */
+     
   }
 
   bindTexture(texture, data, width, height) {

@@ -16,10 +16,6 @@ const baseConfig = {
       preferBuiltins: false,
     }),
   ],
-  external: () => {
-    // External dependencies that should not be bundled
-    return false;
-  },
 };
 
 const configs = [

@@ -23,8 +23,8 @@ export default class BlurShader {
 
     this.setupFrameBufferTextures();
 
-    this.blurHorizontal = new BlurHorizontal(gl, this.blurLevel, opts);
-    this.blurVertical = new BlurVertical(gl, this.blurLevel, opts);
+    this.blurHorizontal = new BlurHorizontal(gl, this.blurLevel);
+    this.blurVertical = new BlurVertical(gl, this.blurLevel);
   }
 
   updateGlobals(opts) {
@@ -137,7 +137,6 @@ export default class BlurShader {
     );
     this.blurHorizontal.renderQuadTexture(
       prevTexture,
-      mdVSFrame,
       blurMins,
       blurMaxs,
       this.horizontalTexsizes[0]

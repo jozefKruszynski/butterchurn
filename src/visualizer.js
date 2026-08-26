@@ -13,9 +13,8 @@ export default class Visualizer {
   constructor(audioContext, canvas, opts) {
     this.opts = opts;
 
-    // Initialize RNG context
-    this.rng = initializeRNG(opts);
-    this.deterministicMode = opts.deterministic || opts.testMode;
+    // installs the (possibly seeded) RNG that getRNG() hands out
+    initializeRNG(opts);
     this.audio = new AudioProcessor(audioContext);
 
     const vizWidth = opts.width || 1200;
@@ -287,7 +286,6 @@ export default class Visualizer {
   }
 
   connectAudio(audioNode) {
-    this.audioNode = audioNode;
     this.audio.connectAudio(audioNode);
   }
 
@@ -729,7 +727,7 @@ export default class Visualizer {
   }
 
   loadJSPreset(preset, blendTime) {
-    /* eslint-disable no-param-reassign, no-new-func */
+     
     preset.init_eqs = new Function("a", `${preset.init_eqs_str} return a;`);
     preset.frame_eqs = new Function("a", `${preset.frame_eqs_str} return a;`);
     if (preset.pixel_eqs_str && preset.pixel_eqs_str !== "") {
@@ -784,7 +782,7 @@ export default class Visualizer {
         preset.waves[i] = Object.assign({}, preset.waves[i], wave);
       }
     }
-    /* eslint-enable no-param-reassign, no-new-func */
+     
     this.renderer.loadPreset(preset, blendTime);
   }
 

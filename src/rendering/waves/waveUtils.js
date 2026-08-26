@@ -1,5 +1,5 @@
 export default class WaveUtils {
-  /* eslint-disable no-param-reassign */
+   
   static smoothWave(positions, positionsSmoothed, nVertsIn, zCoord = false) {
     const c1 = -0.15;
     const c2 = 1.15;
@@ -116,5 +116,5 @@ export default class WaveUtils {
     }
   }
 
-  /* eslint-enable no-param-reassign */
+   
 }

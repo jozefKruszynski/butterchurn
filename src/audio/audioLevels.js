@@ -46,7 +46,7 @@ export default class AudioLevels {
     this.longAvg.fill(1);
   }
 
-  /* eslint-disable camelcase */
+   
   get bass() {
     return this.val[0];
   }
@@ -70,7 +70,7 @@ export default class AudioLevels {
   get treb_att() {
     return this.att[2];
   }
-  /* eslint-enable camelcase */
+   
 
   static isFiniteNumber(num) {
     return Number.isFinite(num) && !Number.isNaN(num);

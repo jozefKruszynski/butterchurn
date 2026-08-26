@@ -42,13 +42,6 @@ export class SeededRandom {
   }
 
   /**
-   * Generate random integer in [0, max)
-   */
-  nextInt(max) {
-    return Math.floor(this.next() * max);
-  }
-
-  /**
    * Generate random number in [0, max)
    * Mimics butterchurn's rand() behavior
    */
@@ -59,13 +52,6 @@ export class SeededRandom {
     return Math.floor(this.next() * Math.floor(max));
   }
 
-  /**
-   * Reset generator to initial seed
-   */
-  reset(seed) {
-    SeededRandom.initializeState(this.state, seed);
-    this.warmUp();
-  }
 }
 
 export function createRNGContext(seed = 1) {
@@ -74,15 +60,7 @@ export function createRNGContext(seed = 1) {
   return {
     random: () => rng.next(),
     rand: (x) => rng.rand(x),
-    randint: (x) => Math.floor(rng.rand(x) + 1),
-    getRNG: () => rng,
-    reset: (newSeed) => {
-      if (newSeed !== undefined) {
-        rng.reset(newSeed);
-      } else {
-        rng.reset(seed);
-      }
-    }
+    randint: (x) => Math.floor(rng.rand(x) + 1)
   };
 }
 
@@ -91,8 +69,6 @@ export function createDefaultRNGContext() {
     random: Math.random,
     rand: (x) =>
       x < 1 ? Math.random() : Math.floor(Math.random() * Math.floor(x)),
-    randint: (x) => Math.floor((x < 1 ? Math.random() : Math.random() * Math.floor(x)) + 1),
-    getRNG: () => null,
-    reset: () => {}
+    randint: (x) => Math.floor((x < 1 ? Math.random() : Math.random() * Math.floor(x)) + 1)
   };
 }

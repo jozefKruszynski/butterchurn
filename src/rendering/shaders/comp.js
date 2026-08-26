@@ -667,7 +667,7 @@ export default class CompShader {
 
   static generateHueBase(mdVSFrame, hueBase) {
 
-    /* eslint-disable max-len */
+     
     for (let i = 0; i < 4; i++) {
       hueBase[i * 3 + 0] =
         0.6 +
@@ -703,7 +703,7 @@ export default class CompShader {
         hueBase[i * 3 + k] = 0.5 + 0.5 * hueBase[i * 3 + k];
       }
     }
-    /* eslint-enable max-len */
+     
 
     return hueBase;
   }

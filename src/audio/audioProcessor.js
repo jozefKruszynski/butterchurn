@@ -70,7 +70,7 @@ export default class AudioProcessor {
     this.timeByteArrayR.set(timeByteArrayR);
     this.processAudio();
   }
-  /* eslint-disable no-bitwise */
+   
   processAudio() {
     for (let i = 0, j = 0, lastIdx = 0; i < this.fftSize; i++) {
       // Shift Unsigned to Signed about 0
@@ -108,5 +108,5 @@ export default class AudioProcessor {
   disconnectAudio(audionode) {
     audionode.disconnect(this.audible);
   }
-  /* eslint-enable no-bitwise */
+   
 }

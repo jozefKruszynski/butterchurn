@@ -181,12 +181,10 @@ export default class TitleText {
        const vec2 halfmad = vec2(0.5);
        in vec2 aPos;
        in vec2 aUv;
-       out vec2 uv_orig;
-       out vec2 uv;
+        out vec2 uv;
        void main(void) {
          gl_Position = vec4(aPos, 0.0, 1.0);
-         uv_orig = aPos * halfmad + halfmad;
-         uv = aUv;
+          uv = aUv;
        }`
     );
     this.gl.compileShader(vertShader);
@@ -199,8 +197,7 @@ export default class TitleText {
        precision highp int;
        precision mediump sampler2D;
 
-       in vec2 uv_orig;
-       in vec2 uv;
+        in vec2 uv;
        out vec4 fragColor;
        uniform sampler2D uTexture;
        uniform float textColor;

@@ -147,7 +147,7 @@ export default class BlurHorizontal {
     };
   }
 
-  renderQuadTexture(texture, mdVSFrame, blurMins, blurMaxs, srcTexsize) {
+  renderQuadTexture(texture, blurMins, blurMaxs, srcTexsize) {
     this.gl.useProgram(this.shaderProgram);
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuf);

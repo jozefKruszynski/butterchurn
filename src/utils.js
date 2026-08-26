@@ -40,7 +40,7 @@ export default class Utils {
   static setWasm(wasmGlobals, obj, keys) {
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
-      // eslint-disable-next-line no-param-reassign
+       
       wasmGlobals[key].value = obj[key];
     }
   }

@@ -60,7 +60,3 @@ export function getRNG() {
   return globalRNG;
 }
 
-export function cleanup() {
-  restoreGlobals();
-  globalRNG = null;
-}

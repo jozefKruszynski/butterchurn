@@ -8,8 +8,6 @@ export default class Border {
 
     this.aspectx = opts.aspectx;
     this.aspecty = opts.aspecty;
-    this.invAspectx = 1.0 / this.aspectx;
-    this.invAspecty = 1.0 / this.aspecty;
 
     this.floatPrecision = ShaderUtils.getFragmentFloatPrecision(this.gl);
     this.createShader();
@@ -20,8 +18,6 @@ export default class Border {
   updateGlobals(opts) {
     this.aspectx = opts.aspectx;
     this.aspecty = opts.aspecty;
-    this.invAspectx = 1.0 / this.aspectx;
-    this.invAspecty = 1.0 / this.aspecty;
   }
 
   createShader() {

@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 const pmap = {
     baseVals: {
       gammaadj: 1.25,
@@ -325,4 +325,4 @@ const pmap = {
   };
 
 export default pmap;
-/* eslint-enable */
+ 

@@ -25,7 +25,7 @@ export default class FFT {
     }
   }
 
-  /* eslint-disable no-bitwise */
+   
   initBitRevTable() {
     this.bitrevtable = new Uint16Array(this.NFREQ);
 
@@ -130,5 +130,5 @@ export default class FFT {
 
     return out;
   }
-  /* eslint-enable no-bitwise */
+   
 }
