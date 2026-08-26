@@ -42,6 +42,10 @@ await page.waitForFunction(() => window.renderComplete === true, {
   timeout: 120000,
 });
 
+if (process.env.SHOT) {
+  await page.screenshot({ path: process.env.SHOT, type: 'png' });
+}
+
 const timings = await page.evaluate(() => window.benchTimings);
 const settled = timings.slice(WARMUP).sort((a, b) => a - b);
 const mean = settled.reduce((s, v) => s + v, 0) / settled.length;
