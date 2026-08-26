@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="data:,">
+    <style>
+      body { margin: 0; overflow: hidden; background: black; }
+      #canvas { display: block; }
+    </style>
+    <script type="module">
+      import butterchurn from '/dist/butterchurn.js';
+
+      document.addEventListener("DOMContentLoaded", function() {
+        window.startBench = async function(params) {
+          const { width, height, audioData, frames, seed, presetName } = params;
+          let preset = params.preset;
+          if (presetName) {
+            await new Promise((resolve, reject) => {
+              const s = document.createElement('script');
+              s.src = '/node_modules/butterchurn-presets-js/lib/butterchurnPresets.min.js';
+              s.onload = resolve;
+              s.onerror = () => reject(new Error('JS pack failed to load'));
+              document.head.appendChild(s);
+            });
+            preset = butterchurnPresets.getPresets()[presetName];
+            if (!preset) throw new Error('preset not in JS pack: ' + presetName);
+          }
+
+          const canvas = document.getElementById('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const visualizer = butterchurn.createVisualizer(null, canvas, {
+            width, height, deterministic: true, seed
+          });
+          await visualizer.loadPreset(preset, 0);
+
+          const timings = [];
+          let currentFrame = 0;
+          window.renderComplete = false;
+
+          function render() {
+            if (currentFrame >= frames) {
+              window.benchTimings = timings;
+              window.renderComplete = true;
+              return;
+            }
+            const audio = audioData[currentFrame % audioData.length];
+            const t0 = performance.now();
+            visualizer.render({
+              elapsedTime: 1 / 30,
+              audioLevels: {
+                timeByteArray: audio.timeByteArray,
+                timeByteArrayL: audio.timeByteArrayL,
+                timeByteArrayR: audio.timeByteArrayR,
+              }
+            });
+            timings.push(performance.now() - t0);
+            currentFrame++;
+            requestAnimationFrame(render);
+          }
+          render();
+        };
+        window.benchReady = true;
+      });
+    </script>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+  </body>
+</html>
