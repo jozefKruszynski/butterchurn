@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 
-async function renderButterchurn(page, serverUrl, width, height, presetName, audioData, frames, seed = 12345, presetType = 'js') {
+async function renderButterchurn(page, serverUrl, width, height, presetName, audioData, frames, seed = 12345, presetType = 'js', blend = null) {
   const butterchurnPath = path.join(process.cwd(), 'dist/butterchurn.js');
   if (!fs.existsSync(butterchurnPath)) {
     throw new Error(
@@ -24,7 +24,7 @@ async function renderButterchurn(page, serverUrl, width, height, presetName, aud
 
   await page.evaluate(async (params) => {
     await window.startVisualization(params);
-  }, { width, height, presetName, audioData, frames, seed });
+  }, { width, height, presetName, audioData, frames, seed, ...(blend || {}) });
 
   try {
     await page.waitForFunction(() => window.renderComplete === true, {

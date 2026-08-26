@@ -139,4 +139,35 @@ describe('Butterchurn Visual Regression Tests', () => {
       }
     });
   });
+
+  // Preset blending is its own code path (mixFrameEquations, blend patterns);
+  // these snapshots capture a mid-blend frame that the per-preset tests never see.
+  const BLEND_FROM = 'Flexi - mindblob mix';
+  const BLEND_TO = 'Unchained - Rewop';
+  const BLEND_PRE_FRAMES = 60;
+  const BLEND_MID_FRAMES = 45;
+  const BLEND_TIME_SEC = 3.0;
+
+  ['js', 'wasm'].forEach((presetType) => {
+    const suffix = presetType === 'wasm' ? '_wasm' : '';
+    test(`preset blend - mid-blend regression test (${presetType.toUpperCase()})`, async () => {
+      const page = await createPage();
+
+      try {
+        const audioData = testAudioData.slice(0, BLEND_PRE_FRAMES + BLEND_MID_FRAMES);
+        const screenshot = await renderButterchurn(
+          page, serverUrl, width, height, BLEND_FROM, audioData,
+          BLEND_PRE_FRAMES, SEED1, presetType,
+          { blendPresetName: BLEND_TO, blendTime: BLEND_TIME_SEC, blendFrames: BLEND_MID_FRAMES }
+        );
+
+        expect(screenshot).toMatchImageSnapshot({
+          ...imageSnapshotConfig,
+          customSnapshotIdentifier: () => `blend-mindblob-to-rewop-${SEED1}${suffix}`
+        });
+      } finally {
+        await page.close();
+      }
+    });
+  });
 });

@@ -21,7 +21,8 @@
 
       document.addEventListener("DOMContentLoaded", function() {
         window.startVisualization = async function(params) {
-          const { width, height, presetName, audioData, frames, seed } = params;
+          const { width, height, presetName, audioData, frames, seed,
+                  blendPresetName, blendTime, blendFrames } = params;
 
           const canvas = document.getElementById('canvas');
           canvas.width = width;
@@ -46,11 +47,23 @@
           window.audioData = audioData;
 
           let currentFrame = 0;
+          let blendLoaded = false;
+          const totalFrames = frames + (blendPresetName ? blendFrames : 0);
           window.renderComplete = false;
 
           function render() {
-            if (currentFrame >= frames) {
+            if (currentFrame >= totalFrames) {
               window.renderComplete = true;
+              return;
+            }
+            if (blendPresetName && currentFrame === frames && !blendLoaded) {
+              blendLoaded = true;
+              const blendPreset = presets[blendPresetName];
+              if (!blendPreset) {
+                throw new Error('Blend preset not found: ' + blendPresetName);
+              }
+              // mid-blend frames are the point: keep rendering while blending
+              visualizer.loadPreset(blendPreset, blendTime).then(() => render());
               return;
             }
 
