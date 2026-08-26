@@ -14,6 +14,10 @@ async function renderButterchurn(page, serverUrl, width, height, presetName, aud
 
   await page.setViewport({ width, height, deviceScaleFactor: 1 });
 
+  const consoleLogs = [];
+  page.on('console', (msg) => consoleLogs.push(msg.text()));
+  page.on('pageerror', (err) => consoleLogs.push(String(err)));
+
   await page.goto(`${serverUrl}/test-${presetType}.html`, { waitUntil: 'domcontentloaded' });
 
   const startTime = Date.now();
@@ -27,9 +31,9 @@ async function renderButterchurn(page, serverUrl, width, height, presetName, aud
       timeout: 60000
     });
   } catch (error) {
-    // Get any console errors for debugging
-    const logs = await page.evaluate(() => window.consoleLogs || []);
-    throw new Error(`Rendering timeout after 30s. Console logs: ${JSON.stringify(logs)}`);
+    throw new Error(
+      `Rendering timeout after 60s: ${error.message}. Console: ${JSON.stringify(consoleLogs)}`
+    );
   }
 
   const renderTime = Date.now() - startTime;

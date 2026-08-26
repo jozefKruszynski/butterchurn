@@ -32,7 +32,7 @@ export default class PresetEquationRunner {
   }
 
   initializeEquations(globalVars) {
-    this.runVertEQs = this.preset.pixel_eqs !== "";
+    this.runVertEQs = !!this.preset.pixel_eqs;
 
     this.mdVSQInit = null;
     this.mdVSRegs = null;

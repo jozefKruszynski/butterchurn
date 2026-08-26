@@ -729,65 +729,62 @@ export default class Visualizer {
   }
 
   loadJSPreset(preset, blendTime) {
-    // If init_eqs is already a function, it means we've already prepared the preset to run
-    if (typeof preset.init_eqs !== "function") {
-      /* eslint-disable no-param-reassign, no-new-func */
-      preset.init_eqs = new Function("a", `${preset.init_eqs_str} return a;`);
-      preset.frame_eqs = new Function("a", `${preset.frame_eqs_str} return a;`);
-      if (preset.pixel_eqs_str && preset.pixel_eqs_str !== "") {
-        preset.pixel_eqs = new Function(
-          "a",
-          `${preset.pixel_eqs_str} return a;`
-        );
-      } else {
-        preset.pixel_eqs = "";
-      }
-
-      for (let i = 0; i < preset.shapes.length; i++) {
-        if (preset.shapes[i].baseVals.enabled !== 0) {
-          preset.shapes[i] = Object.assign({}, preset.shapes[i], {
-            init_eqs: new Function(
-              "a",
-              `${preset.shapes[i].init_eqs_str} return a;`
-            ),
-            frame_eqs: new Function(
-              "a",
-              `${preset.shapes[i].frame_eqs_str} return a;`
-            ),
-          });
-        }
-      }
-
-      for (let i = 0; i < preset.waves.length; i++) {
-        if (preset.waves[i].baseVals.enabled !== 0) {
-          const wave = {
-            init_eqs: new Function(
-              "a",
-              `${preset.waves[i].init_eqs_str} return a;`
-            ),
-            frame_eqs: new Function(
-              "a",
-              `${preset.waves[i].frame_eqs_str} return a;`
-            ),
-          };
-
-          if (
-            preset.waves[i].point_eqs_str &&
-            preset.waves[i].point_eqs_str !== ""
-          ) {
-            wave.point_eqs = new Function(
-              "a",
-              `${preset.waves[i].point_eqs_str} return a;`
-            );
-          } else {
-            wave.point_eqs = "";
-          }
-
-          preset.waves[i] = Object.assign({}, preset.waves[i], wave);
-        }
-      }
-      /* eslint-enable no-param-reassign, no-new-func */
+    /* eslint-disable no-param-reassign, no-new-func */
+    preset.init_eqs = new Function("a", `${preset.init_eqs_str} return a;`);
+    preset.frame_eqs = new Function("a", `${preset.frame_eqs_str} return a;`);
+    if (preset.pixel_eqs_str && preset.pixel_eqs_str !== "") {
+      preset.pixel_eqs = new Function(
+        "a",
+        `${preset.pixel_eqs_str} return a;`
+      );
+    } else {
+      preset.pixel_eqs = "";
     }
+
+    for (let i = 0; i < preset.shapes.length; i++) {
+      if (preset.shapes[i].baseVals.enabled !== 0) {
+        preset.shapes[i] = Object.assign({}, preset.shapes[i], {
+          init_eqs: new Function(
+            "a",
+            `${preset.shapes[i].init_eqs_str} return a;`
+          ),
+          frame_eqs: new Function(
+            "a",
+            `${preset.shapes[i].frame_eqs_str} return a;`
+          ),
+        });
+      }
+    }
+
+    for (let i = 0; i < preset.waves.length; i++) {
+      if (preset.waves[i].baseVals.enabled !== 0) {
+        const wave = {
+          init_eqs: new Function(
+            "a",
+            `${preset.waves[i].init_eqs_str} return a;`
+          ),
+          frame_eqs: new Function(
+            "a",
+            `${preset.waves[i].frame_eqs_str} return a;`
+          ),
+        };
+
+        if (
+          preset.waves[i].point_eqs_str &&
+          preset.waves[i].point_eqs_str !== ""
+        ) {
+          wave.point_eqs = new Function(
+            "a",
+            `${preset.waves[i].point_eqs_str} return a;`
+          );
+        } else {
+          wave.point_eqs = "";
+        }
+
+        preset.waves[i] = Object.assign({}, preset.waves[i], wave);
+      }
+    }
+    /* eslint-enable no-param-reassign, no-new-func */
     this.renderer.loadPreset(preset, blendTime);
   }
 

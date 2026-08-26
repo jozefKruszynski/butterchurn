@@ -20,6 +20,12 @@ class TestServer {
         filePath = path.join(process.cwd(), 'test/visual/test-wasm.html');
       } else if (req.url.startsWith('/')) {
         filePath = path.join(projectRoot, req.url);
+        // keep requests inside the project root
+        if (!path.resolve(filePath).startsWith(path.resolve(projectRoot) + path.sep)) {
+          res.writeHead(403);
+          res.end('Forbidden');
+          return;
+        }
       } else {
         res.writeHead(404);
         res.end('Not found');
