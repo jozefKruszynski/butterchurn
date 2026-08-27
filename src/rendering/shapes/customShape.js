@@ -53,6 +53,12 @@ export default class CustomShape {
     this.batchIndexSig = 0;
     this.uploadedIndexSig = -1;
     this.uploadedIndexCount = -1;
+    // bordered instances bypass the batch (a border forces a flush per
+    // instance anyway, so batching only adds churn); they draw through these
+    // small dedicated buffers like the pre-batching engine did
+    this.instPositions = new Float32Array(VERTS_PER_INSTANCE * 3);
+    this.instColors = new Float32Array(VERTS_PER_INSTANCE * 4);
+    this.instUvs = new Float32Array(VERTS_PER_INSTANCE * 2);
     this.batchTextured = false;
     this.batchAdditive = false;
     this.batchTexture = null;
@@ -69,7 +75,25 @@ export default class CustomShape {
     this.colorVertexBuf = this.gl.createBuffer();
     this.uvVertexBuf = this.gl.createBuffer();
     this.indexBuf = this.gl.createBuffer();
+    this.instPositionBuf = this.gl.createBuffer();
+    this.instColorBuf = this.gl.createBuffer();
+    this.instUvBuf = this.gl.createBuffer();
     this.borderPositionVertexBuf = this.gl.createBuffer();
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.instPositionBuf);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.instPositions,
+      this.gl.DYNAMIC_DRAW
+    );
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.instColorBuf);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.instColors,
+      this.gl.DYNAMIC_DRAW
+    );
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.instUvBuf);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.instUvs, this.gl.DYNAMIC_DRAW);
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.borderPositionVertexBuf);
     this.gl.bufferData(
@@ -451,6 +475,21 @@ export default class CustomShape {
     const isBorderThick = Math.abs(thickoutline) >= 1;
     const isAdditive = Math.abs(additive) >= 1;
 
+    if (hasBorder) {
+      // paint order: everything batched so far renders first
+      this.flushBatch();
+      this.drawDirectInstance(
+        vals,
+        blendProgress,
+        prevTexture,
+        sides,
+        isTextured,
+        isBorderThick,
+        isAdditive
+      );
+      return;
+    }
+
     // blend mode and texturing are draw state, so a change ends the batch
     if (
       this.batchVertexCount > 0 &&
@@ -507,11 +546,6 @@ export default class CustomShape {
         uvs[v * 2 + 1] = 0.5 + (0.5 * Math.sin(texAngSum)) / texZoom;
       }
 
-      if (hasBorder) {
-        this.borderPositions[(k - 1) * 3 + 0] = positions[v * 3 + 0];
-        this.borderPositions[(k - 1) * 3 + 1] = positions[v * 3 + 1];
-        this.borderPositions[(k - 1) * 3 + 2] = positions[v * 3 + 2];
-      }
     }
 
     // fan triangle k is (center, ring k, ring k+1); indexed triangles keep
@@ -527,11 +561,105 @@ export default class CustomShape {
     this.batchIndexCount = idx;
     this.batchIndexSig = ((this.batchIndexSig ^ sides) * 16777619) >>> 0;
     this.batchVertexCount = base + sides + 2;
+  }
 
-    if (hasBorder) {
-      this.flushBatch();
-      this.drawBorderInstance(sides, isBorderThick);
+  // the pre-batching per-instance draw, kept for bordered instances: small
+  // dedicated buffers, a TRIANGLE_FAN, and the border on top
+  drawDirectInstance(
+    vals,
+    blendProgress,
+    prevTexture,
+    sides,
+    isTextured,
+    isBorderThick,
+    isAdditive
+  ) {
+    const gl = this.gl;
+    const positions = this.instPositions;
+    const colors = this.instColors;
+    const uvs = this.instUvs;
+
+    const rad = vals.rad;
+    const ang = vals.ang;
+    const x = vals.x * 2 - 1;
+    const y = vals.y * -2 + 1;
+
+    positions[0] = x;
+    positions[1] = y;
+    positions[2] = 0;
+
+    colors[0] = vals.r;
+    colors[1] = vals.g;
+    colors[2] = vals.b;
+    colors[3] = vals.a * blendProgress;
+
+    if (isTextured) {
+      uvs[0] = 0.5;
+      uvs[1] = 0.5;
     }
+
+    const quarterPi = Math.PI * 0.25;
+    for (let k = 1; k <= sides + 1; k++) {
+      const p = (k - 1) / sides;
+      const pTwoPi = p * 2 * Math.PI;
+
+      const angSum = pTwoPi + ang + quarterPi;
+      positions[k * 3 + 0] = x + rad * Math.cos(angSum) * this.aspecty;
+      positions[k * 3 + 1] = y + rad * Math.sin(angSum);
+      positions[k * 3 + 2] = 0;
+
+      colors[k * 4 + 0] = vals.r2;
+      colors[k * 4 + 1] = vals.g2;
+      colors[k * 4 + 2] = vals.b2;
+      colors[k * 4 + 3] = vals.a2 * blendProgress;
+
+      if (isTextured) {
+        const texAngSum = pTwoPi + vals.tex_ang + quarterPi;
+        uvs[k * 2 + 0] =
+          0.5 + ((0.5 * Math.cos(texAngSum)) / vals.tex_zoom) * this.aspecty;
+        uvs[k * 2 + 1] = 0.5 + (0.5 * Math.sin(texAngSum)) / vals.tex_zoom;
+      }
+
+      this.borderPositions[(k - 1) * 3 + 0] = positions[k * 3 + 0];
+      this.borderPositions[(k - 1) * 3 + 1] = positions[k * 3 + 1];
+      this.borderPositions[(k - 1) * 3 + 2] = positions[k * 3 + 2];
+    }
+
+    gl.useProgram(this.shaderProgram);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instPositionBuf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, positions, 0, (sides + 2) * 3);
+    gl.vertexAttribPointer(this.aPosLocation, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.aPosLocation);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instColorBuf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors, 0, (sides + 2) * 4);
+    gl.vertexAttribPointer(this.aColorLocation, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.aColorLocation);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instUvBuf);
+    if (isTextured) {
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, uvs, 0, (sides + 2) * 2);
+    }
+    gl.vertexAttribPointer(this.aUvLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.aUvLocation);
+
+    gl.uniform1f(this.texturedLoc, isTextured ? 1 : 0);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, prevTexture);
+    gl.bindSampler(0, this.mainSampler);
+    gl.uniform1i(this.textureLoc, 0);
+
+    if (isAdditive) {
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    } else {
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    }
+
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, sides + 2);
+
+    this.drawBorderInstance(sides, isBorderThick);
   }
 
   flushBatch() {
