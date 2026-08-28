@@ -37,7 +37,7 @@
           const { width, height, presetName, audioData, frames, seed,
                   blendPresetName, blendTime, blendFrames,
                   paletteRamp, paletteRampStrength, paletteColors,
-                  paletteColorsStrength } = params;
+                  paletteColorsStrength, outputFXAA } = params;
 
           const canvas = document.getElementById('canvas');
           canvas.width = width;
@@ -48,6 +48,10 @@
             height: height,
             deterministic: true,
             seed: seed,
+            // renderToScreen only runs the output shader pass when this is on,
+            // and the ramp lives in that pass; default false keeps every other
+            // snapshot on the path it was recorded with
+            outputFXAA: outputFXAA === true,
             // recoloring eases over wall-clock time, which a headless render
             // outruns; landing it instantly is what makes the snapshot stable
             colorTransitionMs: 0

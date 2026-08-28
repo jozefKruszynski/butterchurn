@@ -194,8 +194,13 @@ describe('Butterchurn Visual Regression Tests', () => {
       );
       const hash = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
-      const plain = await render(null);
+      // the ramp draws in the output shader pass, which only runs with output
+      // AA on; every render here shares the setting so only the palette differs
+      const AA = { outputFXAA: true };
+
+      const plain = await render(AA);
       const recolored = await render({
+        ...AA,
         paletteRamp: PALETTE_ANCHORS,
         paletteRampStrength: 1,
         paletteColors: PALETTE_ANCHORS
@@ -207,7 +212,10 @@ describe('Butterchurn Visual Regression Tests', () => {
       });
       expect(hash(recolored)).not.toEqual(hash(plain));
 
+      // ramp only, no element colours: isolates the shader path, and proves a
+      // palette longer than the anchor cap still recolors
       const longPalette = await render({
+        ...AA,
         paletteRamp: LONG_PALETTE,
         paletteRampStrength: 1
       });
