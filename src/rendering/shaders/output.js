@@ -10,6 +10,7 @@ export default class OutputShader {
     this.textureRatio = opts.textureRatio;
     this.texsizeX = opts.texsizeX;
     this.texsizeY = opts.texsizeY;
+    this.outputFXAA = opts.outputFXAA ?? false;
 
     this.positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
 
@@ -37,14 +38,17 @@ export default class OutputShader {
     }
   }
 
+  // supersampling already antialiases, so FXAA is only worth running when the
+  // host asked for it and the internal buffer is no larger than the output
   useFXAA() {
-    return this.textureRatio <= 1;
+    return this.outputFXAA && this.textureRatio <= 1;
   }
 
   updateGlobals(opts) {
     this.textureRatio = opts.textureRatio;
     this.texsizeX = opts.texsizeX;
     this.texsizeY = opts.texsizeY;
+    this.outputFXAA = opts.outputFXAA ?? false;
 
     this.gl.deleteProgram(this.shaderProgram);
 
