@@ -52,6 +52,42 @@ visualizer.setRendererSize(1600, 1200);
 visualizer.render();
 ```
 
+### Artwork recoloring
+
+Two independent ways to recolor a preset from a host-supplied palette, both inert until you call
+them. Colors are `[r, g, b]` triples in the 0 to 255 range, and passing `null` fades the effect
+back out.
+
+```JavaScript
+// remap the whole image through a dark-to-light ramp
+visualizer.setPaletteRamp([[16, 12, 40], [166, 52, 92], [252, 220, 176]], 1);
+
+// recolor the preset's own waveform, borders and motion vectors
+visualizer.setPaletteColors([[16, 12, 40], [166, 52, 92], [252, 220, 176]]);
+```
+
+`setPaletteRamp(colors, strength)` runs on the final blit. Each pixel's luminance indexes the
+ramp, and only hue and saturation change, so the preset's structure and motion survive intact.
+
+`setPaletteColors(colors, strength)` blends the preset's own frame-level color scalars instead.
+Those are drawn into the feedback texture, so unlike the ramp they also change how the preset
+evolves and not only how it looks.
+
+Both accept a palette of any length: shorter ones repeat their last color, longer ones are
+resampled evenly across the available slots. `strength` runs from 0 to 1 and defaults to 1.
+Changes ease in over 1.5 seconds, which `colorTransitionMs` on `createVisualizer` overrides;
+pass 0 to apply them instantly.
+
+Recoloring composes with `setTint(rgb)`, which shifts the whole image towards a single color.
+
+Older builds lack these calls, so feature-detect before using them:
+
+```JavaScript
+if (butterchurn.supportsPaletteRamp) {
+  // butterchurn.maxPaletteRampColors is how many ramp anchors are interpolated
+}
+```
+
 ### Browser Support
 
 Butterchurn requires the [browser support WebGL 2](https://caniuse.com/#feat=webgl2).

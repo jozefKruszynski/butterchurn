@@ -233,4 +233,31 @@ describe('Butterchurn Visual Regression Tests', () => {
       await page.close();
     }
   }, PALETTE_TEST_TIMEOUT_MS);
+
+  // The output pass used to run only when AA was on, which silently disabled
+  // the ramp on the low quality tier. No snapshot: the hash comparison is the
+  // whole point, and it needs no baseline.
+  test('palette ramp applies with output AA off (JS)', async () => {
+    const page = await createPage();
+
+    try {
+      const audioData = testAudioData.slice(0, FRAMES_TO_RENDER);
+      const render = (palette) => renderButterchurn(
+        page, serverUrl, width, height, PALETTE_PRESET, audioData,
+        FRAMES_TO_RENDER, SEED1, 'js', null, palette
+      );
+      const hash = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+
+      const plain = await render({ outputFXAA: false });
+      const ramped = await render({
+        outputFXAA: false,
+        paletteRamp: PALETTE_ANCHORS,
+        paletteRampStrength: 1
+      });
+
+      expect(hash(ramped)).not.toEqual(hash(plain));
+    } finally {
+      await page.close();
+    }
+  });
 });

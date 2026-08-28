@@ -241,6 +241,7 @@ export default class Renderer {
     return {
       pixelRatio: this.pixelRatio,
       textureRatio: this.textureRatio,
+      outputFXAA: this.outputFXAA,
       texsizeX: this.texsizeX,
       texsizeY: this.texsizeY,
       mesh_width: this.mesh_width,
@@ -397,7 +398,11 @@ export default class Renderer {
   }
 
   setOutputAA(useAA) {
+    if (useAA === this.outputFXAA) {return;}
     this.outputFXAA = useAA;
+    // the pass now runs for recoloring too, so which variant it runs has to
+    // follow the AA flag rather than the pass
+    this.outputShader.updateGlobals(this.rendererParams());
   }
 
   updateGlobals() {
@@ -1188,7 +1193,11 @@ export default class Renderer {
 
   renderToScreen() {
     this.updateOutputColors();
-    if (this.outputFXAA) {
+    // the tint and the palette ramp are drawn by the output shader, so the
+    // pass has to run for them even when AA is off
+    const outputPass =
+      this.outputFXAA || this.tint.amount > 0 || this.paletteRamp.amount > 0;
+    if (outputPass) {
       this.bindFrambufferAndSetViewport(
         this.compFrameBuffer,
         this.texsizeX,
@@ -1257,7 +1266,7 @@ export default class Renderer {
       }
     }
 
-    if (this.outputFXAA) {
+    if (outputPass) {
       this.gl.bindTexture(this.gl.TEXTURE_2D, this.compTexture);
       this.gl.generateMipmap(this.gl.TEXTURE_2D);
 
