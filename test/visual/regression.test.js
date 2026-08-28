@@ -170,4 +170,67 @@ describe('Butterchurn Visual Regression Tests', () => {
       }
     });
   });
+
+  // The recoloring APIs are inert unless a host calls them, so nothing above
+  // touches the ramp shader path or the frame-color override.
+  const PALETTE_PRESET = 'Flexi - mindblob mix';
+  // four renders with output AA on overrun the global per-test budget
+  const PALETTE_TEST_TIMEOUT_MS = 300000;
+  const PALETTE_ANCHORS = [
+    [16, 12, 40], [78, 30, 96], [166, 52, 92], [232, 120, 74], [252, 220, 176]
+  ];
+  // longer than the anchor cap: resampled down, never rejected
+  const LONG_PALETTE = [
+    [8, 8, 24], [40, 16, 64], [96, 24, 88], [140, 40, 96], [190, 72, 88],
+    [224, 116, 76], [244, 176, 120], [252, 232, 200]
+  ];
+
+  test('artwork palette recoloring regression test (JS)', async () => {
+    const page = await createPage();
+
+    try {
+      const audioData = testAudioData.slice(0, FRAMES_TO_RENDER);
+      const render = (palette) => renderButterchurn(
+        page, serverUrl, width, height, PALETTE_PRESET, audioData,
+        FRAMES_TO_RENDER, SEED1, 'js', null, palette
+      );
+      const hash = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+
+      // the ramp draws in the output shader pass, which only runs with output
+      // AA on; every render here shares the setting so only the palette differs
+      const AA = { outputFXAA: true };
+
+      const plain = await render(AA);
+      // ramp only: it draws on the final blit and never writes to the feedback
+      // texture, so this is a pure recolour of `plain`
+      const ramped = await render({
+        ...AA,
+        paletteRamp: PALETTE_ANCHORS,
+        paletteRampStrength: 1
+      });
+      // element colours do feed back, so they change how the preset evolves
+      // rather than only its colours
+      const elements = await render({ ...AA, paletteColors: PALETTE_ANCHORS });
+      // longer than the anchor cap: resampled to a different ramp, not rejected
+      const longPalette = await render({
+        ...AA,
+        paletteRamp: LONG_PALETTE,
+        paletteRampStrength: 1
+      });
+
+      // one mechanism per assertion, so a failure names which one broke
+      expect(hash(ramped)).not.toEqual(hash(plain));
+      expect(hash(elements)).not.toEqual(hash(plain));
+      expect(hash(longPalette)).not.toEqual(hash(plain));
+      expect(hash(longPalette)).not.toEqual(hash(ramped));
+
+      // last, so a missing or stale baseline cannot mask the assertions above
+      expect(ramped).toMatchImageSnapshot({
+        ...imageSnapshotConfig,
+        customSnapshotIdentifier: () => `palette-ramp-${SEED1}`
+      });
+    } finally {
+      await page.close();
+    }
+  }, PALETTE_TEST_TIMEOUT_MS);
 });

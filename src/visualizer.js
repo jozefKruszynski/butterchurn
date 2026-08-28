@@ -859,6 +859,14 @@ export default class Visualizer {
     this.renderer.setTint(rgb);
   }
 
+  setPaletteColors(colors, strength) {
+    this.renderer.setPaletteColors(colors, strength);
+  }
+
+  setPaletteRamp(colors, strength) {
+    this.renderer.setPaletteRamp(colors, strength);
+  }
+
   setMaxShapeInstances(maxInstances) {
     this.renderer.setMaxShapeInstances(maxInstances);
   }

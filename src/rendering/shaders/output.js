@@ -1,5 +1,8 @@
 import ShaderUtils, { buildProgram } from "./shaderUtils";
 
+// anchors of the luminance ramp; the shader array and the upload share this size
+export const PALETTE_RAMP_SIZE = 5;
+
 export default class OutputShader {
   constructor(gl, opts) {
     this.gl = gl;
@@ -12,6 +15,10 @@ export default class OutputShader {
 
     this.tintColor = [0, 0, 0];
     this.tintAmount = 0;
+
+    this.paletteRampColors = new Float32Array(PALETTE_RAMP_SIZE * 3);
+    this.paletteRampCount = 1;
+    this.paletteRampAmount = 0;
 
     this.vertexBuf = this.gl.createBuffer();
     // the quad never changes; upload once
@@ -102,6 +109,27 @@ export default class OutputShader {
          return mix(rgb, blended, u_tintAmount);
        }
 
+       uniform vec3 u_paletteRamp[${PALETTE_RAMP_SIZE}];
+       uniform float u_paletteRampAmount;
+       uniform int u_paletteRampCount;
+       // anchors run dark to light, evenly spaced over the luminance range
+       vec3 rampColor(float lum) {
+         int last = u_paletteRampCount - 1;
+         if (last <= 0) return u_paletteRamp[0];
+         float pos = clamp(lum, 0.0, 1.0) * float(last);
+         float lowIdx = min(floor(pos), float(last - 1));
+         int low = int(lowIdx);
+         return mix(u_paletteRamp[low], u_paletteRamp[low + 1], pos - lowIdx);
+       }
+       // the tint blend again, but the target color comes from the ramp
+       vec3 applyPaletteRamp(vec3 rgb) {
+         if (u_paletteRampAmount <= 0.0) return rgb;
+         float lum = tintLum(rgb);
+         vec3 target = rampColor(lum);
+         vec3 blended = tintClip(target + (lum - tintLum(target)));
+         return mix(rgb, blended, u_paletteRampAmount);
+       }
+
        #ifndef FXAA_REDUCE_MIN
          #define FXAA_REDUCE_MIN   (1.0/ 128.0)
        #endif
@@ -153,7 +181,7 @@ export default class OutputShader {
          else
            color = vec4(rgbB, 1.0);
 
-         color.rgb = applyTint(color.rgb);
+         color.rgb = applyPaletteRamp(applyTint(color.rgb));
 
          fragColor = color;
        }`
@@ -171,6 +199,18 @@ export default class OutputShader {
     this.tintAmountLoc = this.gl.getUniformLocation(
       this.shaderProgram,
       "u_tintAmount"
+    );
+    this.paletteRampLoc = this.gl.getUniformLocation(
+      this.shaderProgram,
+      "u_paletteRamp[0]"
+    );
+    this.paletteRampAmountLoc = this.gl.getUniformLocation(
+      this.shaderProgram,
+      "u_paletteRampAmount"
+    );
+    this.paletteRampCountLoc = this.gl.getUniformLocation(
+      this.shaderProgram,
+      "u_paletteRampCount"
     );
     this.texsizeLoc = this.gl.getUniformLocation(this.shaderProgram, "texsize");
   }
@@ -213,8 +253,32 @@ export default class OutputShader {
          return mix(rgb, blended, u_tintAmount);
        }
 
+       uniform vec3 u_paletteRamp[${PALETTE_RAMP_SIZE}];
+       uniform float u_paletteRampAmount;
+       uniform int u_paletteRampCount;
+       // anchors run dark to light, evenly spaced over the luminance range
+       vec3 rampColor(float lum) {
+         int last = u_paletteRampCount - 1;
+         if (last <= 0) return u_paletteRamp[0];
+         float pos = clamp(lum, 0.0, 1.0) * float(last);
+         float lowIdx = min(floor(pos), float(last - 1));
+         int low = int(lowIdx);
+         return mix(u_paletteRamp[low], u_paletteRamp[low + 1], pos - lowIdx);
+       }
+       // the tint blend again, but the target color comes from the ramp
+       vec3 applyPaletteRamp(vec3 rgb) {
+         if (u_paletteRampAmount <= 0.0) return rgb;
+         float lum = tintLum(rgb);
+         vec3 target = rampColor(lum);
+         vec3 blended = tintClip(target + (lum - tintLum(target)));
+         return mix(rgb, blended, u_paletteRampAmount);
+       }
+
        void main(void) {
-         fragColor = vec4(applyTint(texture(uTexture, uv).rgb), 1.0);
+         fragColor = vec4(
+           applyPaletteRamp(applyTint(texture(uTexture, uv).rgb)),
+           1.0
+         );
        }`
     );
 
@@ -230,6 +294,18 @@ export default class OutputShader {
     this.tintAmountLoc = this.gl.getUniformLocation(
       this.shaderProgram,
       "u_tintAmount"
+    );
+    this.paletteRampLoc = this.gl.getUniformLocation(
+      this.shaderProgram,
+      "u_paletteRamp[0]"
+    );
+    this.paletteRampAmountLoc = this.gl.getUniformLocation(
+      this.shaderProgram,
+      "u_paletteRampAmount"
+    );
+    this.paletteRampCountLoc = this.gl.getUniformLocation(
+      this.shaderProgram,
+      "u_paletteRampCount"
     );
   }
 
@@ -259,6 +335,9 @@ export default class OutputShader {
       this.tintColor[2]
     );
     this.gl.uniform1f(this.tintAmountLoc, this.tintAmount);
+    this.gl.uniform3fv(this.paletteRampLoc, this.paletteRampColors);
+    this.gl.uniform1i(this.paletteRampCountLoc, this.paletteRampCount);
+    this.gl.uniform1f(this.paletteRampAmountLoc, this.paletteRampAmount);
 
     if (this.useFXAA()) {
       this.gl.uniform4fv(
