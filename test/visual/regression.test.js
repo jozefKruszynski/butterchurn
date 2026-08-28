@@ -199,27 +199,36 @@ describe('Butterchurn Visual Regression Tests', () => {
       const AA = { outputFXAA: true };
 
       const plain = await render(AA);
-      const recolored = await render({
+
+      // Ramp only. It draws on the final blit and never writes to the feedback
+      // texture, so this is a pure recolour of `plain`: same structure, and the
+      // snapshot stays readable against the preset's own baseline.
+      const ramped = await render({
         ...AA,
         paletteRamp: PALETTE_ANCHORS,
-        paletteRampStrength: 1,
-        paletteColors: PALETTE_ANCHORS
+        paletteRampStrength: 1
       });
 
-      expect(recolored).toMatchImageSnapshot({
+      expect(ramped).toMatchImageSnapshot({
         ...imageSnapshotConfig,
-        customSnapshotIdentifier: () => `palette-recoloring-${SEED1}`
+        customSnapshotIdentifier: () => `palette-ramp-${SEED1}`
       });
-      expect(hash(recolored)).not.toEqual(hash(plain));
+      expect(hash(ramped)).not.toEqual(hash(plain));
 
-      // ramp only, no element colours: isolates the shader path, and proves a
-      // palette longer than the anchor cap still recolors
+      // Element colours go into the feedback loop, so they change how the
+      // preset evolves rather than only its colours. A hash difference is the
+      // honest assertion for that; a snapshot would be pinning chaos.
+      const elements = await render({ ...AA, paletteColors: PALETTE_ANCHORS });
+      expect(hash(elements)).not.toEqual(hash(plain));
+
+      // longer than the anchor cap: resampled to a different ramp, not rejected
       const longPalette = await render({
         ...AA,
         paletteRamp: LONG_PALETTE,
         paletteRampStrength: 1
       });
       expect(hash(longPalette)).not.toEqual(hash(plain));
+      expect(hash(longPalette)).not.toEqual(hash(ramped));
     } finally {
       await page.close();
     }
