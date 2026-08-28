@@ -49,7 +49,9 @@ jobs:
         run: pnpm test:visual:update
 
       - name: Upload regenerated snapshots
-        if: ${{ inputs.update_snapshots }}
+        # an `if` without a status function implies success(), which threw away
+        # snapshots that had already been written when a later assertion failed
+        if: ${{ !cancelled() && inputs.update_snapshots }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: updated-snapshots

@@ -174,6 +174,8 @@ describe('Butterchurn Visual Regression Tests', () => {
   // The recoloring APIs are inert unless a host calls them, so nothing above
   // touches the ramp shader path or the frame-color override.
   const PALETTE_PRESET = 'Flexi - mindblob mix';
+  // four renders with output AA on overrun the global per-test budget
+  const PALETTE_TEST_TIMEOUT_MS = 300000;
   const PALETTE_ANCHORS = [
     [16, 12, 40], [78, 30, 96], [166, 52, 92], [232, 120, 74], [252, 220, 176]
   ];
@@ -199,38 +201,36 @@ describe('Butterchurn Visual Regression Tests', () => {
       const AA = { outputFXAA: true };
 
       const plain = await render(AA);
-
-      // Ramp only. It draws on the final blit and never writes to the feedback
-      // texture, so this is a pure recolour of `plain`: same structure, and the
-      // snapshot stays readable against the preset's own baseline.
+      // ramp only: it draws on the final blit and never writes to the feedback
+      // texture, so this is a pure recolour of `plain`
       const ramped = await render({
         ...AA,
         paletteRamp: PALETTE_ANCHORS,
         paletteRampStrength: 1
       });
-
-      expect(ramped).toMatchImageSnapshot({
-        ...imageSnapshotConfig,
-        customSnapshotIdentifier: () => `palette-ramp-${SEED1}`
-      });
-      expect(hash(ramped)).not.toEqual(hash(plain));
-
-      // Element colours go into the feedback loop, so they change how the
-      // preset evolves rather than only its colours. A hash difference is the
-      // honest assertion for that; a snapshot would be pinning chaos.
+      // element colours do feed back, so they change how the preset evolves
+      // rather than only its colours
       const elements = await render({ ...AA, paletteColors: PALETTE_ANCHORS });
-      expect(hash(elements)).not.toEqual(hash(plain));
-
       // longer than the anchor cap: resampled to a different ramp, not rejected
       const longPalette = await render({
         ...AA,
         paletteRamp: LONG_PALETTE,
         paletteRampStrength: 1
       });
+
+      // one mechanism per assertion, so a failure names which one broke
+      expect(hash(ramped)).not.toEqual(hash(plain));
+      expect(hash(elements)).not.toEqual(hash(plain));
       expect(hash(longPalette)).not.toEqual(hash(plain));
       expect(hash(longPalette)).not.toEqual(hash(ramped));
+
+      // last, so a missing or stale baseline cannot mask the assertions above
+      expect(ramped).toMatchImageSnapshot({
+        ...imageSnapshotConfig,
+        customSnapshotIdentifier: () => `palette-ramp-${SEED1}`
+      });
     } finally {
       await page.close();
     }
-  });
+  }, PALETTE_TEST_TIMEOUT_MS);
 });
