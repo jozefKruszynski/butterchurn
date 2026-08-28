@@ -859,8 +859,8 @@ export default class Visualizer {
     this.renderer.setTint(rgb);
   }
 
-  setPaletteColors(colors) {
-    this.renderer.setPaletteColors(colors);
+  setPaletteColors(colors, strength) {
+    this.renderer.setPaletteColors(colors, strength);
   }
 
   setPaletteRamp(colors, strength) {

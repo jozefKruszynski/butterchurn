@@ -35,7 +35,9 @@
         window.startVisualization = async function(params) {
           await packLoaded;
           const { width, height, presetName, audioData, frames, seed,
-                  blendPresetName, blendTime, blendFrames } = params;
+                  blendPresetName, blendTime, blendFrames,
+                  paletteRamp, paletteRampStrength, paletteColors,
+                  paletteColorsStrength } = params;
 
           const canvas = document.getElementById('canvas');
           canvas.width = width;
@@ -45,8 +47,18 @@
             width: width,
             height: height,
             deterministic: true,
-            seed: seed
+            seed: seed,
+            // recoloring eases over wall-clock time, which a headless render
+            // outruns; landing it instantly is what makes the snapshot stable
+            colorTransitionMs: 0
           });
+
+          if (paletteRamp) {
+            visualizer.setPaletteRamp(paletteRamp, paletteRampStrength);
+          }
+          if (paletteColors) {
+            visualizer.setPaletteColors(paletteColors, paletteColorsStrength);
+          }
 
           const presets = presetType === 'wasm'
             ? base.default

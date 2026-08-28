@@ -14,6 +14,7 @@ import OutputShader, { PALETTE_RAMP_SIZE } from "./shaders/output";
 import ResampleShader from "./shaders/resample";
 import BlurShader from "./shaders/blur/blur";
 import Noise from "../noise/noise";
+import ColorTransition, { COLOR_TRANSITION_MS } from "./colorTransition";
 import ImageTextures from "../image/imageTextures";
 import TitleText from "./text/titleText";
 import BlendPattern from "./blendPattern";
@@ -41,10 +42,40 @@ const PALETTE_COLOR_KEYS = [
   ["ib_r", "ib_g", "ib_b"],
   ["mv_r", "mv_g", "mv_b"],
 ];
-const PALETTE_TRANSITION_MS = 1500;
+// Hosts feed these straight from artwork extraction, where a single non-finite
+// component would otherwise stick in the eased state for good. Array-like
+// rather than Array, so pixels read into a typed array still work.
+const toUnitRgb = (rgb) =>
+  rgb &&
+  rgb.length >= 3 &&
+  Number.isFinite(rgb[0]) &&
+  Number.isFinite(rgb[1]) &&
+  Number.isFinite(rgb[2])
+    ? [rgb[0] / 255, rgb[1] / 255, rgb[2] / 255]
+    : null;
 
-const blankPaletteColors = () => PALETTE_COLOR_KEYS.map(() => [0, 0, 0]);
-const blankPaletteRamp = () => new Float32Array(PALETTE_RAMP_SIZE * 3);
+// Fills exactly `count` slots whatever the host supplies: a shorter palette
+// repeats its last color, so a later count bump eases from the light end
+// rather than from black, and a longer one is resampled evenly so it still
+// spans its whole range instead of losing the tail. Null if any color is
+// malformed.
+const packColors = (colors, count) => {
+  if (!Array.isArray(colors) || colors.length < 1) {return null;}
+  const packed = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const source =
+      colors.length <= count
+        ? Math.min(i, colors.length - 1)
+        : Math.round((i * (colors.length - 1)) / Math.max(count - 1, 1));
+    const rgb = toUnitRgb(colors[source]);
+    if (!rgb) {return null;}
+    packed.set(rgb, i * 3);
+  }
+  return packed;
+};
+
+const clampStrength = (strength) =>
+  Number.isFinite(strength) ? Math.min(Math.max(strength, 0), 1) : 1;
 
 export default class Renderer {
   constructor(gl, audio, opts) {
@@ -118,34 +149,19 @@ export default class Renderer {
     this.prevCompShader = new CompShader(gl, this.noise, this.image, params);
     this.numBlurPasses = 0;
     this.gpuTimer = new GpuTimer(gl);
-    // artwork tint state; a timed transition mirrors a CSS 1.5s ease
-    this.tintColor = [0, 0, 0];
-    this.tintAmount = 0;
-    this.tintFromColor = [0, 0, 0];
-    this.tintFromAmount = 0;
-    this.tintTargetColor = [0, 0, 0];
-    this.tintTargetAmount = 0;
-    this.tintTransitionStartAt = null;
-    this.tintStarted = false;
-    // artwork palette state; same timed transition, applied to frame colors
-    this.paletteColors = blankPaletteColors();
-    this.paletteAmount = 0;
-    this.paletteFromColors = blankPaletteColors();
-    this.paletteFromAmount = 0;
-    this.paletteTargetColors = blankPaletteColors();
-    this.paletteTargetAmount = 0;
-    this.paletteTransitionStartAt = null;
-    this.paletteStarted = false;
-    // artwork luminance ramp state; same transition, remaps the final image
-    this.paletteRampColors = blankPaletteRamp();
+    // artwork recoloring; the transition mirrors a CSS 1.5s ease. Zero makes
+    // every change land instantly, which is what the snapshot tests need.
+    const transitionMs = opts.colorTransitionMs ?? COLOR_TRANSITION_MS;
+    this.tint = new ColorTransition(3, transitionMs);
+    this.palette = new ColorTransition(
+      PALETTE_COLOR_KEYS.length * 3,
+      transitionMs
+    );
+    this.paletteRamp = new ColorTransition(
+      PALETTE_RAMP_SIZE * 3,
+      transitionMs
+    );
     this.paletteRampCount = 1;
-    this.paletteRampAmount = 0;
-    this.paletteRampFromColors = blankPaletteRamp();
-    this.paletteRampFromAmount = 0;
-    this.paletteRampTargetColors = blankPaletteRamp();
-    this.paletteRampTargetAmount = 0;
-    this.paletteRampTransitionStartAt = null;
-    this.paletteRampStarted = false;
     // runtime clamp on how many blur levels render; 3 = whatever the preset asks
     this.maxBlurPasses = opts.maxBlurPasses ?? 3;
     this.blurShader1 = new BlurShader(0, this.blurRatios, gl, params);
@@ -887,8 +903,7 @@ export default class Renderer {
 
     // eased here rather than in renderToScreen: that runs after the waveform
     // and borders have already drawn, so the amount would be a frame stale
-    this.updatePaletteColors();
-    this.updatePaletteRamp();
+    this.palette.tick(performance.now());
     mdVSFrameMixed = this.applyPaletteColors(mdVSFrameMixed);
 
     this.gpuTimer.section("warp");
@@ -1112,179 +1127,52 @@ export default class Renderer {
   }
 
   setTint(rgb) {
-    // an interrupted transition continues from wherever it stands
-    this.tintFromColor = [...this.tintColor];
-    this.tintFromAmount = this.tintAmount;
-    if (rgb) {
-      this.tintTargetColor = [rgb[0] / 255, rgb[1] / 255, rgb[2] / 255];
-      // the first color jumps straight in; only the strength fades
-      if (!this.tintStarted) {
-        this.tintStarted = true;
-        this.tintColor = [...this.tintTargetColor];
-        this.tintFromColor = [...this.tintTargetColor];
-      }
-      this.tintTargetAmount = 1;
-    } else {
-      this.tintTargetAmount = 0;
-    }
-    this.tintTransitionStartAt = -1;
+    this.tint.to(toUnitRgb(rgb), 1);
   }
 
-  updateTint() {
-    if (this.tintTransitionStartAt === -1) {
-      this.tintTransitionStartAt = performance.now();
-    }
-    if (this.tintTransitionStartAt !== null) {
-      const t = Math.min(
-        (performance.now() - this.tintTransitionStartAt) / 1500,
-        1
-      );
-      // smoothstep approximates the CSS ease timing function
-      const eased = t * t * (3 - 2 * t);
-      for (let i = 0; i < 3; i++) {
-        this.tintColor[i] =
-          this.tintFromColor[i] +
-          (this.tintTargetColor[i] - this.tintFromColor[i]) * eased;
-      }
-      this.tintAmount =
-        this.tintFromAmount +
-        (this.tintTargetAmount - this.tintFromAmount) * eased;
-      if (t >= 1) {this.tintTransitionStartAt = null;}
-    }
-    this.outputShader.tintColor = this.tintColor;
-    this.outputShader.tintAmount = this.tintAmount;
+  // tint and ramp only feed the output shader, so they ease here, immediately
+  // before it draws
+  updateOutputColors() {
+    const now = performance.now();
+    this.tint.tick(now);
+    this.paletteRamp.tick(now);
+    this.outputShader.tintColor = this.tint.values;
+    this.outputShader.tintAmount = this.tint.amount;
+    this.outputShader.paletteRampColors = this.paletteRamp.values;
+    this.outputShader.paletteRampCount = this.paletteRampCount;
+    this.outputShader.paletteRampAmount = this.paletteRamp.amount;
   }
 
-  setPaletteColors(colors) {
-    const target =
-      Array.isArray(colors) && colors.length === PALETTE_COLOR_KEYS.length
-        ? colors
-        : null;
-    // an interrupted transition continues from wherever it stands
-    this.paletteFromColors = this.paletteColors.map((color) => [...color]);
-    this.paletteFromAmount = this.paletteAmount;
-    if (target) {
-      this.paletteTargetColors = target.map((rgb) => [
-        rgb[0] / 255,
-        rgb[1] / 255,
-        rgb[2] / 255,
-      ]);
-      // the first colors jump straight in; only the strength fades
-      if (!this.paletteStarted) {
-        this.paletteStarted = true;
-        this.paletteColors = this.paletteTargetColors.map((c) => [...c]);
-        this.paletteFromColors = this.paletteTargetColors.map((c) => [...c]);
-      }
-      this.paletteTargetAmount = 1;
-    } else {
-      this.paletteTargetAmount = 0;
-    }
-    this.paletteTransitionStartAt = -1;
-  }
-
-  updatePaletteColors() {
-    if (this.paletteTransitionStartAt === -1) {
-      this.paletteTransitionStartAt = performance.now();
-    }
-    if (this.paletteTransitionStartAt === null) {return;}
-    const t = Math.min(
-      (performance.now() - this.paletteTransitionStartAt) /
-        PALETTE_TRANSITION_MS,
-      1
+  setPaletteColors(colors, strength = 1) {
+    this.palette.to(
+      packColors(colors, PALETTE_COLOR_KEYS.length),
+      clampStrength(strength)
     );
-    // smoothstep approximates the CSS ease timing function
-    const eased = t * t * (3 - 2 * t);
-    for (let i = 0; i < this.paletteColors.length; i++) {
-      for (let j = 0; j < 3; j++) {
-        this.paletteColors[i][j] =
-          this.paletteFromColors[i][j] +
-          (this.paletteTargetColors[i][j] - this.paletteFromColors[i][j]) *
-            eased;
-      }
-    }
-    this.paletteAmount =
-      this.paletteFromAmount +
-      (this.paletteTargetAmount - this.paletteFromAmount) * eased;
-    if (t >= 1) {this.paletteTransitionStartAt = null;}
   }
 
   // palette colors ride on a copy: the unmixed frame the warp shader gets and
   // the preset blend maths behind it must stay untouched
   applyPaletteColors(mdVSFrameMixed) {
-    if (this.paletteAmount <= 0) {return mdVSFrameMixed;}
+    const amount = this.palette.amount;
+    if (amount <= 0) {return mdVSFrameMixed;}
+    const values = this.palette.values;
     const mixed = { ...mdVSFrameMixed };
     for (let i = 0; i < PALETTE_COLOR_KEYS.length; i++) {
       const keys = PALETTE_COLOR_KEYS[i];
-      const color = this.paletteColors[i];
       for (let j = 0; j < keys.length; j++) {
         const base = mixed[keys[j]];
-        mixed[keys[j]] = base + (color[j] - base) * this.paletteAmount;
+        mixed[keys[j]] = base + (values[i * 3 + j] - base) * amount;
       }
     }
     return mixed;
   }
 
   setPaletteRamp(colors, strength = 1) {
-    const target =
-      Array.isArray(colors) &&
-      colors.length >= 1 &&
-      colors.length <= PALETTE_RAMP_SIZE
-        ? colors
-        : null;
-    // an interrupted transition continues from wherever it stands
-    this.paletteRampFromColors = new Float32Array(this.paletteRampColors);
-    this.paletteRampFromAmount = this.paletteRampAmount;
-    if (target) {
-      const packed = blankPaletteRamp();
-      for (let i = 0; i < PALETTE_RAMP_SIZE; i++) {
-        // unused slots repeat the last anchor, so a later count bump eases
-        // from the light end rather than from black
-        const rgb = target[Math.min(i, target.length - 1)];
-        packed[i * 3] = rgb[0] / 255;
-        packed[i * 3 + 1] = rgb[1] / 255;
-        packed[i * 3 + 2] = rgb[2] / 255;
-      }
-      this.paletteRampTargetColors = packed;
-      this.paletteRampCount = target.length;
-      // the first colors jump straight in; only the strength fades
-      if (!this.paletteRampStarted) {
-        this.paletteRampStarted = true;
-        this.paletteRampColors = new Float32Array(packed);
-        this.paletteRampFromColors = new Float32Array(packed);
-      }
-      this.paletteRampTargetAmount = Math.min(Math.max(strength, 0), 1);
-    } else {
-      this.paletteRampTargetAmount = 0;
+    const packed = packColors(colors, PALETTE_RAMP_SIZE);
+    if (packed) {
+      this.paletteRampCount = Math.min(colors.length, PALETTE_RAMP_SIZE);
     }
-    this.paletteRampTransitionStartAt = -1;
-  }
-
-  updatePaletteRamp() {
-    if (this.paletteRampTransitionStartAt === -1) {
-      this.paletteRampTransitionStartAt = performance.now();
-    }
-    if (this.paletteRampTransitionStartAt !== null) {
-      const t = Math.min(
-        (performance.now() - this.paletteRampTransitionStartAt) /
-          PALETTE_TRANSITION_MS,
-        1
-      );
-      // smoothstep approximates the CSS ease timing function
-      const eased = t * t * (3 - 2 * t);
-      for (let i = 0; i < this.paletteRampColors.length; i++) {
-        this.paletteRampColors[i] =
-          this.paletteRampFromColors[i] +
-          (this.paletteRampTargetColors[i] - this.paletteRampFromColors[i]) *
-            eased;
-      }
-      this.paletteRampAmount =
-        this.paletteRampFromAmount +
-        (this.paletteRampTargetAmount - this.paletteRampFromAmount) * eased;
-      if (t >= 1) {this.paletteRampTransitionStartAt = null;}
-    }
-    this.outputShader.paletteRampColors = this.paletteRampColors;
-    this.outputShader.paletteRampCount = this.paletteRampCount;
-    this.outputShader.paletteRampAmount = this.paletteRampAmount;
+    this.paletteRamp.to(packed, clampStrength(strength));
   }
 
   // Blur levels suppressed by the clamp alias the deepest rendered one, so
@@ -1299,7 +1187,7 @@ export default class Renderer {
   }
 
   renderToScreen() {
-    this.updateTint();
+    this.updateOutputColors();
     if (this.outputFXAA) {
       this.bindFrambufferAndSetViewport(
         this.compFrameBuffer,

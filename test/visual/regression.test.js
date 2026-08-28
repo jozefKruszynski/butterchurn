@@ -170,4 +170,50 @@ describe('Butterchurn Visual Regression Tests', () => {
       }
     });
   });
+
+  // The recoloring APIs are inert unless a host calls them, so nothing above
+  // touches the ramp shader path or the frame-color override.
+  const PALETTE_PRESET = 'Flexi - mindblob mix';
+  const PALETTE_ANCHORS = [
+    [16, 12, 40], [78, 30, 96], [166, 52, 92], [232, 120, 74], [252, 220, 176]
+  ];
+  // longer than the anchor cap: resampled down, never rejected
+  const LONG_PALETTE = [
+    [8, 8, 24], [40, 16, 64], [96, 24, 88], [140, 40, 96], [190, 72, 88],
+    [224, 116, 76], [244, 176, 120], [252, 232, 200]
+  ];
+
+  test('artwork palette recoloring regression test (JS)', async () => {
+    const page = await createPage();
+
+    try {
+      const audioData = testAudioData.slice(0, FRAMES_TO_RENDER);
+      const render = (palette) => renderButterchurn(
+        page, serverUrl, width, height, PALETTE_PRESET, audioData,
+        FRAMES_TO_RENDER, SEED1, 'js', null, palette
+      );
+      const hash = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+
+      const plain = await render(null);
+      const recolored = await render({
+        paletteRamp: PALETTE_ANCHORS,
+        paletteRampStrength: 1,
+        paletteColors: PALETTE_ANCHORS
+      });
+
+      expect(recolored).toMatchImageSnapshot({
+        ...imageSnapshotConfig,
+        customSnapshotIdentifier: () => `palette-recoloring-${SEED1}`
+      });
+      expect(hash(recolored)).not.toEqual(hash(plain));
+
+      const longPalette = await render({
+        paletteRamp: LONG_PALETTE,
+        paletteRampStrength: 1
+      });
+      expect(hash(longPalette)).not.toEqual(hash(plain));
+    } finally {
+      await page.close();
+    }
+  });
 });
